@@ -20,5 +20,3 @@ outside_con.get_dates()
 outside_con.renew_forecast()
 outside_con.renew_dust_measure()
 outside_con.simulate_ambient()
-
-controller = Climatix()

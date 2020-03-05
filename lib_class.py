@@ -194,20 +194,20 @@ class Ambient(object):
         print("\n", self.__current)
         return True
 
+
+class Building(object):
+    def __init__(self, config_path="building_data.txt"):
+        self.__config_path = config_path
+        self.__config = {}
+
     def load_config(self):
         config_file = open(self.__config_path, mode="r")
         config_data = config_file.readlines()
         for line in config_data:
             marker = line.find("=")
             key = line[0:marker]
-            value = line[(marker + 1):]
+            value = line[(marker + 1):].rstrip("\n")
             self.__config.update({key: value})
-
-
-class Building(object):
-    def __init__(self, config_path="building_data.txt"):
-        self.__config_path = config_path
-        self.__config = {}
 
 
 class Climatix(object):
@@ -243,3 +243,12 @@ class Climatix(object):
         self.__io = {}
         self.__current_time = {}
         self.__current_date = {}
+
+    def load_config(self):
+        config_file = open(self.__config_path, mode="r")
+        config_data = config_file.readlines()
+        for line in config_data:
+            marker = line.find("=")
+            key = line[0:marker]
+            value = line[(marker + 1):].rstrip("\n")
+            self.__config.update({key: value})
