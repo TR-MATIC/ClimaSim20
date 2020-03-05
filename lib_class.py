@@ -199,6 +199,8 @@ class Building(object):
     def __init__(self, config_path="building_data.txt"):
         self.__config_path = config_path
         self.__config = {}
+        self.__volume = 0.0
+        self.__area = 0.0
 
     def load_config(self):
         config_file = open(self.__config_path, mode="r")
@@ -208,6 +210,13 @@ class Building(object):
             key = line[0:marker]
             value = line[(marker + 1):].rstrip("\n")
             self.__config.update({key: value})
+
+    def calculate_params(self):
+        w = float(self.__config["width"])
+        l = float(self.__config["length"])
+        h = float(self.__config["height"])
+        self.__volume = w * l * h
+        self.__area = 2 * (w + l) * h + w * l
 
 
 class Climatix(object):
