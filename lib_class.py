@@ -134,7 +134,7 @@ class Ambient(object):
             self.__dust_measure["data"].append(dust_measure)
         return True
 
-    def simulate_ambient(self):
+    def simulate(self):
         current_date = time.strftime("%Y-%m-%d")
         current_hour = time.strftime("%H")
         current_min = time.strftime("%M")
@@ -177,9 +177,9 @@ class Ambient(object):
         self.__current["solar"] = last_solar + 1/360 * elapsed_minutes * (next_solar - last_solar)
         # Current PM10 dust concentration must be calculated as well, but the data comes from another API
         # This API responds with historical data, not simulated future values. Moreover, data for current hour
-        # can be delayed for a quarter or so - and in this case API responds with 0.0 dust concentration ;-)
-        # And finally, this data is prepared in 1-hour slices - not in 6-hour slices. Funny, isn't it? ;-)
-        # Extrapolation algorithm must be smart enough to handle that
+        # can be delayed for a quarter or so - and in this case API responds with 0.0 dust concentration ;)
+        # And finally, this data is prepared in 1-hour slices - not in 6-hour slices. Funny, isn't it? ;)
+        # Extrapolation algorithm must be smart enough to handle that.
         elapsed_minutes = int(current_min)
         dust_N0 = self.__dust_measure["data"][0]
         dust_N1 = self.__dust_measure["data"][1]
@@ -191,8 +191,7 @@ class Ambient(object):
             self.__current["dust"] = dust_N1 + 1/60 * elapsed_minutes * (dust_N1 - dust_N2)
         else:
             self.__current["dust"] = dust_N2 + 1/60 * elapsed_minutes * (dust_N2 - dust_N3)
-        print("\n", self.__current)
-        return True
+        return self.__current
 
 
 # Simplified model, with sensible response, but without sophisticated modelling and calculations.
@@ -207,9 +206,9 @@ class Building(object):
         # insul_avg = 4
         # insul_tau = 2
         # AVG - coefficient of averaging temperatures, TAU - time constant for 1st order intertia
-        self.__temp_room = 0.0
-        self.__temp_constr = 0.0
-        self.__temp_insul = 0.0
+        self.__temp_room = [0.0, 0.0]
+        self.__temp_constr = [0.0, 0.0]
+        self.__temp_insul = [0.0, 0.0]
         self.__time_diff = 1.0
 
     def load_config(self):
@@ -221,13 +220,28 @@ class Building(object):
             value = line[(marker + 1):].rstrip("\n")
             self.__config.update({key: value})
 
-    def calculate_temps(self):
-        w = float(self.__config["width"])
-        l = float(self.__config["length"])
-        h = float(self.__config["height"])
-        self.__volume = w * l * h
-        self.__area = 2 * (w + l) * h + w * l
-
+    def calculate(self, temp, te_sup):
+        te_rm = self.__temp_room[0]
+        te_con = self.__temp_constr[0]
+        te_ins = self.__temp_insul[0]
+        av_rm = float(self.__config["room_avg"])
+        av_con = float(self.__config["constr_avg"])
+        av_ins = float(self.__config["insul_avg"])
+        tau_rm = float(self.__config["room_tau"])
+        tau_con = float(self.__config["constr_tau"])
+        tau_ins = float(self.__config["insul_tau"])
+        ti_diff = float(self.__time_diff)
+        self.__temp_room[1] = te_rm + ((av_rm * te_sup + te_con) / (av_rm + 1) - te_rm) * (ti_diff/tau_rm)
+        self.__temp_constr[1] = te_con + ((av_con * te_rm + te_ins) / (av_con + 1) - te_con) * (ti_diff/tau_con)
+        self.__temp_insul[1] = te_ins + ((av_ins * te_con + temp) / (av_ins + 1) - te_ins) * (ti_diff/tau_ins)
+        self.__temp_room[0] = self.__temp_room[1]
+        self.__temp_constr[0] = self.__temp_constr[1]
+        self.__temp_insul[0] = self.__temp_insul[1]
+        return {
+            "temp_room": self.__temp_room[1],
+            "temp_constr": self.__temp_constr[1],
+            "temp_insul": self.__temp_insul[1]
+        }
 
 
 # Extended model, with sophisticated modelling and calculations.
