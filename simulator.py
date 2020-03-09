@@ -14,6 +14,8 @@ op_data= {
     "temp_room": 0.0,
     "temp_constr": 0.0,
     "temp_insul": 0.0,
+    "damp_cmd": False,
+    "pump_cmd": False,
     "htg_pos": 0.0,
     "htg_pwr": 0.0
 }
@@ -38,6 +40,7 @@ building.load_config()
 
 controls = Climatix()
 controls.load_config()
+controls.climatix_auth()
 
 ambient.get_dates()
 ambient.renew_forecast()
@@ -51,4 +54,14 @@ internal_conditions = building.calculate(op_data["temp"], op_data["temp_sup"])
 for key in ["temp_room", "temp_constr", "temp_insul"]:
     op_data[key] = internal_conditions[key]
 
+control_values = controls.read_JSON(["damp_cmd", "pump_cmd", "htg_pos"])
+for key in control_values:
+    op_data[key] = control_values[key]
+
+model_values = controls.calculate(op_data["temp"], op_data["temp_room"], op_data["damp_cmd"], op_data["pump_cmd"], op_data["htg_pos"])
+for key in model_values:
+    op_data[key] = model_values[key]
+
 print(op_data)
+
+print(controls.write_JSON({"TOa": op_data["temp"], "TSu": op_data["temp_sup"], "TRm": op_data["temp_room"], "TEx": op_data["temp_room"]}))

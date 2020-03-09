@@ -266,29 +266,23 @@ class Climatix(object):
         # climatix_name
         # climatix_pass
         # climatix_pin
-        # present_val=AAE=
-        # tracking_sel=QDA=
-        # tracking_com_val=QzA=
-        # reliability_com=RDA=
-        # TOa=AyLizxoD
-        # TSu=AyJesBoD
-        # TRm=AyLj7BoD
-        # TEx=AyJgbhoD
-        # TEh=AyK/nxoD
-        # DpFiltSu=AyIQnxoD
-        # DpFiltEx=AyJ8NRoD
-        # FireAlm=BCJibxoD
-        # FrostAlm=BCIuUxoD
-        # PumpAlm=BCLnuhoD
-        # HRecAlm=BCJTRhoD
-        # DampCmd=ByIaGBoD
-        # PumpCmd=ByIYKBoD
-        # HRecCmd=ByJB6hoD
-        # FanSuCmd=CCKoVRoD
-        # FanExCmd=CCJ/ORoD
-        # HtgPos=BiJhZhoD
-        # HRecPos=BiIiFxoD
-        self.__io = {}
+        # present_val = AAE =
+        # tracking_sel = QDA =
+        # tracking_com_val = QzA =
+        # reliability_com = RDA =
+        # TOa = AyLizxoD
+        # TSu = AyJesBoD
+        # TRm = AyLj7BoD
+        # TEx = AyJgbhoD
+        # ApiAi1 = ACPNxBoD
+        # ApiAi2 = ACOu9BoD
+        # ApiAi3 = ACOP5BoD
+        # FrostAlm = BCIuUxoD
+        # DampCmd = ByIaGBoD
+        # PumpCmd = ByIYKBoD
+        # FanSuCmd = CCKoVRoD
+        # FanExCmd = CCJ / ORoD
+        # HtgPos = BiJhZhoD
 
     def load_config(self):
         config_file = open(self.__config_path, mode="r")
@@ -299,14 +293,71 @@ class Climatix(object):
             value = line[(marker + 1):].rstrip("\n")
             self.__config.update({key: value})
 
-    def read_JSON(self):
-        pass
+    def climatix_auth(self):
+        climatix_auth = (self.__config["climatix_name"], self.__config["climatix_pass"])
+        return climatix_auth
 
-    def write_JSON(self):
-        pass
+    def climatix_params_r(self, ao_list):
+        climatix_params = {"fn": "read"}
+        params_list = []
+        for key in ao_list:
+            params_list.append(self.__config[key] + self.__config["present_val"])
+        climatix_params.update({"oa": params_list})
+        climatix_params.update({"pin": self.__config["climatix_pin"]})
+        return climatix_params
 
-    def calculate(self, temp):
-        flow_sup = 1800 # flow in cu. meters per hour
-        htg_pwr = 22.0 * 1/100 * self.__io["HtgPos"] # power in kW
-        temp_sup = self.__io["TOa"] + htg_pwr * 1000 / (flow_sup / 3600 * 1,2 * 1005)
+    def read_JSON(self, ao_list):
+        response = {}
+        climatix_params = self.climatix_params_r(ao_list)
+        try:
+            climatix_get = requests.get(
+                self.__config["climatix_url"],
+                auth=self.climatix_auth(),
+                params=climatix_params,
+                timeout=0.500)
+        except:
+            pass
+        else:
+            received = climatix_get.json()["values"]
+            for cnt, key in enumerate(received):
+                response.update({ao_list[cnt]: received[key]})
+        return response
+
+    def climatix_params_w(self, ao_dict):
+        climatix_params = {"fn": "write"}
+        params_list = []
+        for key in ao_dict:
+            params_list.append(self.__config[key] + self.__config["tracking_sel"] + ";" + "1")
+            params_list.append(self.__config[key] + self.__config["tracking_com_val"] + ";" + str(ao_dict[key]))
+        climatix_params.update({"oa": params_list})
+        climatix_params.update({"pin": self.__config["climatix_pin"]})
+        return climatix_params
+
+    def write_JSON(self, ao_dict):
+        try:
+            climatix_get = requests.get(
+                self.__config["climatix_url"],
+                auth=self.climatix_auth(),
+                params=self.climatix_params_w(ao_dict)
+            )
+        except requests.exceptions.Timeout:
+            response = "T"
+        else:
+            pass
+        return climatix_get.json()
+
+    def calculate(self, temp, temp_room, damp_cmd, pump_cmd, htg_pos):
+        flow_sup = 0.0 # flow in cu. meters per hour
+        htg_pwr = 0.0
+        temp_sup = 0.0
+        if pump_cmd:
+            htg_pwr = 22.0 * 1/100 * htg_pos # power in kW
+        else:
+            htg_pwr = 0.0
+        if damp_cmd:
+            flow_sup = 1800
+            temp_sup = temp + htg_pwr * 1000 / flow_sup / 3600 * 1.2 * 1005
+        else:
+            flow_sup = 0.0
+            temp_sup = temp_room
         return {"flow_sup": flow_sup, "temp_sup": temp_sup, "htg_pwr": htg_pwr}
