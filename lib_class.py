@@ -206,9 +206,9 @@ class Building(object):
         # insul_avg = 4
         # insul_tau = 2
         # AVG - coefficient of averaging temperatures, TAU - time constant for 1st order intertia
-        self.__temp_room = [0.0, 0.0]
-        self.__temp_constr = [0.0, 0.0]
-        self.__temp_insul = [0.0, 0.0]
+        self.__temp_room = [10.0, 10.0]
+        self.__temp_constr = [10.0, 10.0]
+        self.__temp_insul = [10.0, 10.0]
         self.__curr_time = time.time()
         self.__last_time = time.time()
 
@@ -221,25 +221,25 @@ class Building(object):
             value = line[(marker + 1):].rstrip("\n")
             self.__config.update({key: value})
 
-    def calculate(self, temp, te_sup):
+    def calculate(self, temp, temp_sup):
         # prepare data
-        te_rm = self.__temp_room[0]
-        te_con = self.__temp_constr[0]
-        te_ins = self.__temp_insul[0]
-        av_rm = float(self.__config["room_avg"])
-        av_con = float(self.__config["constr_avg"])
-        av_ins = float(self.__config["insul_avg"])
+        temp_rm = self.__temp_room[0]
+        temp_con = self.__temp_constr[0]
+        temp_ins = self.__temp_insul[0]
+        avg_rm = float(self.__config["room_avg"])
+        avg_con = float(self.__config["constr_avg"])
+        avg_ins = float(self.__config["insul_avg"])
         tau_rm = float(self.__config["room_tau"])
         tau_con = float(self.__config["constr_tau"])
         tau_ins = float(self.__config["insul_tau"])
         # handle timing
         self.__curr_time = time.time()
-        ti_diff = self.__curr_time - self.__last_time
+        ti_diff = (self.__curr_time - self.__last_time) / 3600
         self.__last_time = self.__curr_time
         # do calculations
-        self.__temp_room[1] = te_rm + ((av_rm * te_sup + te_con) / (av_rm + 1) - te_rm) * (ti_diff/tau_rm)
-        self.__temp_constr[1] = te_con + ((av_con * te_rm + te_ins) / (av_con + 1) - te_con) * (ti_diff/tau_con)
-        self.__temp_insul[1] = te_ins + ((av_ins * te_con + temp) / (av_ins + 1) - te_ins) * (ti_diff/tau_ins)
+        self.__temp_room[1] = temp_rm + ((avg_rm * temp_sup + temp_con) / (avg_rm + 1) - temp_rm) * (ti_diff / tau_rm)
+        self.__temp_constr[1] = temp_con + ((avg_con * temp_rm + temp_ins) / (avg_con + 1) - temp_con) * (ti_diff/tau_con)
+        self.__temp_insul[1] = temp_ins + ((avg_ins * temp_con + temp) / (avg_ins + 1) - temp_ins) * (ti_diff/tau_ins)
         # update storage
         self.__temp_room[0] = self.__temp_room[1]
         self.__temp_constr[0] = self.__temp_constr[1]
@@ -266,31 +266,29 @@ class Climatix(object):
         # climatix_name
         # climatix_pass
         # climatix_pin
-        # present_val = AAE=
-        # tracking_sel = QDA=
-        # tracking_com_val = QzA=
-        # reliability_com = RDA=
-        # TOa = AyLizxoD
-        # TSu = AyJesBoD
-        # TRm = AyLj7BoD
-        # TEx = AyJgbhoD
-        # TEh = AyK/nxoD
-        # DpFiltSu = AyIQnxoD
-        # DpFiltEx = AyJ8NRoD
-        # FireAlm = BCJibxoD
-        # FrostAlm = BCIuUxoD
-        # PumpAlm = BCLnuhoD
-        # HRecAlm = BCJTRhoD
-        # DampCmd = ByIaGBoD
-        # PumpCmd = ByIYKBoD
-        # HRecCmd = ByJB6hoD
-        # FanSuCmd = CCKoVRoD
-        # FanExCmd = CCJ/ORoD
-        # HtgPos = BiJhZhoD
-        # HRecPos = BiIiFxoD
+        # present_val=AAE=
+        # tracking_sel=QDA=
+        # tracking_com_val=QzA=
+        # reliability_com=RDA=
+        # TOa=AyLizxoD
+        # TSu=AyJesBoD
+        # TRm=AyLj7BoD
+        # TEx=AyJgbhoD
+        # TEh=AyK/nxoD
+        # DpFiltSu=AyIQnxoD
+        # DpFiltEx=AyJ8NRoD
+        # FireAlm=BCJibxoD
+        # FrostAlm=BCIuUxoD
+        # PumpAlm=BCLnuhoD
+        # HRecAlm=BCJTRhoD
+        # DampCmd=ByIaGBoD
+        # PumpCmd=ByIYKBoD
+        # HRecCmd=ByJB6hoD
+        # FanSuCmd=CCKoVRoD
+        # FanExCmd=CCJ/ORoD
+        # HtgPos=BiJhZhoD
+        # HRecPos=BiIiFxoD
         self.__io = {}
-        self.__current_time = {}
-        self.__current_date = {}
 
     def load_config(self):
         config_file = open(self.__config_path, mode="r")
@@ -307,5 +305,8 @@ class Climatix(object):
     def write_JSON(self):
         pass
 
-    def calculate(self):
-        pass
+    def calculate(self, temp):
+        flow_sup = 1800 # flow in cu. meters per hour
+        htg_pwr = 22.0 * 1/100 * self.__io["HtgPos"] # power in kW
+        temp_sup = self.__io["TOa"] + htg_pwr * 1000 / (flow_sup / 3600 * 1,2 * 1005)
+        return {"flow_sup": flow_sup, "temp_sup": temp_sup, "htg_pwr": htg_pwr}
