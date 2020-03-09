@@ -195,12 +195,22 @@ class Ambient(object):
         return True
 
 
+# Simplified model, with sensible response, but without sophisticated modelling and calculations.
 class Building(object):
     def __init__(self, config_path="building_data.txt"):
         self.__config_path = config_path
         self.__config = {}
-        self.__volume = 0.0
-        self.__area = 0.0
+        # room_avg = 1 / List of fields available/expected in TXT configuration.
+        # room_tau = 1
+        # constr_avg = 2
+        # constr_tau = 36
+        # insul_avg = 4
+        # insul_tau = 2
+        # AVG - coefficient of averaging temperatures, TAU - time constant for 1st order intertia
+        self.__temp_room = 0.0
+        self.__temp_constr = 0.0
+        self.__temp_insul = 0.0
+        self.__time_diff = 1.0
 
     def load_config(self):
         config_file = open(self.__config_path, mode="r")
@@ -211,12 +221,20 @@ class Building(object):
             value = line[(marker + 1):].rstrip("\n")
             self.__config.update({key: value})
 
-    def calculate_params(self):
+    def calculate_temps(self):
         w = float(self.__config["width"])
         l = float(self.__config["length"])
         h = float(self.__config["height"])
         self.__volume = w * l * h
         self.__area = 2 * (w + l) * h + w * l
+
+
+
+# Extended model, with sophisticated modelling and calculations.
+class BuildingEx(object):
+    def __init__(self, config_path="buildingex_data.txt"):
+        self.__config_path = config_path
+        self.__config = {}
 
 
 class Climatix(object):
