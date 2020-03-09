@@ -209,7 +209,8 @@ class Building(object):
         self.__temp_room = [0.0, 0.0]
         self.__temp_constr = [0.0, 0.0]
         self.__temp_insul = [0.0, 0.0]
-        self.__time_diff = 1.0
+        self.__curr_time = time.time()
+        self.__last_time = time.time()
 
     def load_config(self):
         config_file = open(self.__config_path, mode="r")
@@ -221,6 +222,7 @@ class Building(object):
             self.__config.update({key: value})
 
     def calculate(self, temp, te_sup):
+        # prepare data
         te_rm = self.__temp_room[0]
         te_con = self.__temp_constr[0]
         te_ins = self.__temp_insul[0]
@@ -230,10 +232,15 @@ class Building(object):
         tau_rm = float(self.__config["room_tau"])
         tau_con = float(self.__config["constr_tau"])
         tau_ins = float(self.__config["insul_tau"])
-        ti_diff = float(self.__time_diff)
+        # handle timing
+        self.__curr_time = time.time()
+        ti_diff = self.__curr_time - self.__last_time
+        self.__last_time = self.__curr_time
+        # do calculations
         self.__temp_room[1] = te_rm + ((av_rm * te_sup + te_con) / (av_rm + 1) - te_rm) * (ti_diff/tau_rm)
         self.__temp_constr[1] = te_con + ((av_con * te_rm + te_ins) / (av_con + 1) - te_con) * (ti_diff/tau_con)
         self.__temp_insul[1] = te_ins + ((av_ins * te_con + temp) / (av_ins + 1) - te_ins) * (ti_diff/tau_ins)
+        # update storage
         self.__temp_room[0] = self.__temp_room[1]
         self.__temp_constr[0] = self.__temp_constr[1]
         self.__temp_insul[0] = self.__temp_insul[1]
@@ -293,3 +300,12 @@ class Climatix(object):
             key = line[0:marker]
             value = line[(marker + 1):].rstrip("\n")
             self.__config.update({key: value})
+
+    def read_JSON(self):
+        pass
+
+    def write_JSON(self):
+        pass
+
+    def calculate(self):
+        pass
