@@ -334,29 +334,33 @@ class Climatix(object):
         return climatix_params
 
     def write_JSON(self, ao_dict):
+        response = {}
         try:
             climatix_get = requests.get(
                 self.__config["climatix_url"],
                 auth=self.climatix_auth(),
                 params=self.climatix_params_w(ao_dict)
             )
-        except requests.exceptions.Timeout:
-            response = "T"
-        else:
+        except:
             pass
-        return climatix_get.json()
+        else:
+            response = climatix_get.json()
+        return response
 
-    def calculate(self, temp, temp_room, damp_cmd, pump_cmd, htg_pos):
-        flow_sup = 0.0 # flow in cu. meters per hour
-        htg_pwr = 0.0
-        temp_sup = 0.0
+    def calculate(self, temp, temp_room, damp_cmd, pump_cmd, htg_pos, htg_pwr):
+        htg_pwr_demand = 22.0 * 1/100 * htg_pos
         if pump_cmd:
-            htg_pwr = 22.0 * 1/100 * htg_pos # power in kW
+            if htg_pwr < (htg_pwr_demand - 0.11):
+                htg_pwr = htg_pwr + 0.11
+            elif htg_pwr > (htg_pwr_demand + 0.11):
+                htg_pwr = htg_pwr - 0.11
+            else:
+                htg_pwr = htg_pwr
         else:
             htg_pwr = 0.0
         if damp_cmd:
             flow_sup = 1800
-            temp_sup = temp + htg_pwr * 1000 / flow_sup / 3600 * 1.2 * 1005
+            temp_sup = temp + htg_pwr * 1000 / ( flow_sup / 3600 * 1.2 * 1005 )
         else:
             flow_sup = 0.0
             temp_sup = temp_room
