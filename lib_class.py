@@ -206,7 +206,7 @@ class Building(object):
         # insul_avg = 4
         # insul_tau = 2
         # AVG - coefficient of averaging temperatures, TAU - time constant for 1st order intertia
-        self.__temp_room = [10.0, 10.0]
+        self.__temp_room = [17.0, 17.0]
         self.__temp_constr = [10.0, 10.0]
         self.__temp_insul = [10.0, 10.0]
         self.__curr_time = time.time()
