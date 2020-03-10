@@ -350,10 +350,10 @@ class Climatix(object):
     def calculate(self, temp, temp_room, damp_cmd, pump_cmd, htg_pos, htg_pwr):
         htg_pwr_demand = 22.0 * 1/100 * htg_pos
         if pump_cmd:
-            if htg_pwr < (htg_pwr_demand - 0.11):
-                htg_pwr = htg_pwr + 0.11
-            elif htg_pwr > (htg_pwr_demand + 0.11):
-                htg_pwr = htg_pwr - 0.11
+            if htg_pwr < (htg_pwr_demand - 0.2):
+                htg_pwr = htg_pwr + 0.2
+            elif htg_pwr > (htg_pwr_demand + 0.2):
+                htg_pwr = htg_pwr - 0.2
             else:
                 htg_pwr = htg_pwr
         else:

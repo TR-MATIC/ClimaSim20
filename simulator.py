@@ -49,20 +49,20 @@ for hrs in range(24):
         for key in ["temp", "preci", "solar", "dust"]:
             op_data[key] = outside_conditions[key]
 
-        internal_conditions = building.calculate(op_data["temp"], op_data["temp_sup"])
-        for key in ["temp_room", "temp_constr", "temp_insul"]:
-            op_data[key] = internal_conditions[key]
-
         control_values = controls.read_JSON(["damp_cmd", "pump_cmd", "htg_pos"])
         for key in control_values:
             op_data[key] = control_values[key]
 
-        print(op_data)
+        internal_conditions = building.calculate(op_data["temp"], op_data["temp_sup"])
+        for key in ["temp_room", "temp_constr", "temp_insul"]:
+            op_data[key] = internal_conditions[key]
 
         model_values = controls.calculate(op_data["temp"], op_data["temp_room"], op_data["damp_cmd"], op_data["pump_cmd"], op_data["htg_pos"], op_data["htg_pwr"])
         for key in model_values:
             op_data[key] = model_values[key]
 
-        controls.write_JSON({"TOa": op_data["temp"], "TSu": op_data["temp_sup"], "TRm": op_data["temp_room"], "TEx": op_data["temp_room"]})
+        controls.write_JSON({"temp": op_data["temp"], "temp_sup": op_data["temp_sup"], "temp_room": op_data["temp_room"], "temp_extr": op_data["temp_room"]})
+
+        print(op_data)
 
         time.sleep(1.0)
