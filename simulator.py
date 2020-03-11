@@ -32,12 +32,16 @@ ambient.load_config()
 ambient.create_meteo_headers()
 ambient.get_coordinates()
 
-building = Building()
-building.load_config()
-
 controls = Climatix()
 controls.load_config()
 controls.climatix_auth()
+# 1st time initialization, to start from good values, not from zeros
+control_values = controls.read_JSON(["damp_cmd", "pump_cmd", "htg_pos", "temp", "temp_sup", "temp_room", "temp_extr"])
+for key in control_values:
+    op_data[key] = control_values[key]
+
+building = Building(op_data["temp_room"])
+building.load_config()
 
 for hrs in range(24):
     ambient.get_dates()

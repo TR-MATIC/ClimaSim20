@@ -196,7 +196,7 @@ class Ambient(object):
 
 # Simplified model, with sensible response, but without sophisticated modelling and calculations.
 class Building(object):
-    def __init__(self, config_path="building_data.txt"):
+    def __init__(self, temp_room=10.0, config_path="building_data.txt"):
         self.__config_path = config_path
         self.__config = {}
         # room_avg = 1 / List of fields available/expected in TXT configuration.
@@ -206,7 +206,7 @@ class Building(object):
         # insul_avg = 4
         # insul_tau = 2
         # AVG - coefficient of averaging temperatures, TAU - time constant for 1st order intertia
-        self.__temp_room = [10.0, 10.0]
+        self.__temp_room = [temp_room, temp_room]
         self.__temp_constr = [10.0, 10.0]
         self.__temp_insul = [10.0, 10.0]
         self.__curr_time = time.time()
@@ -320,7 +320,10 @@ class Climatix(object):
         else:
             received = climatix_get.json()["values"]
             for cnt, key in enumerate(received):
-                response.update({ao_list[cnt]: received[key]})
+                if type(received[key]) == list:
+                    response.update({ao_list[cnt]: received[key][0]})
+                else:
+                    response.update({ao_list[cnt]: received[key]})
         return response
 
     def climatix_params_w(self, ao_dict):
@@ -350,10 +353,14 @@ class Climatix(object):
     def calculate(self, temp, temp_room, damp_cmd, pump_cmd, htg_pos, htg_pwr):
         htg_pwr_demand = 22.0 * 1/100 * htg_pos
         if pump_cmd:
-            if htg_pwr < (htg_pwr_demand - 0.2):
+            if htg_pwr < (htg_pwr_demand - 1.0):
                 htg_pwr = htg_pwr + 0.2
-            elif htg_pwr > (htg_pwr_demand + 0.2):
+            elif htg_pwr < (htg_pwr_demand - 0.1):
+                htg_pwr = htg_pwr + 0.05
+            elif htg_pwr > (htg_pwr_demand + 1.0):
                 htg_pwr = htg_pwr - 0.2
+            elif htg_pwr > (htg_pwr_demand + 0.1):
+                htg_pwr = htg_pwr - 0.05
             else:
                 htg_pwr = htg_pwr
         else:
