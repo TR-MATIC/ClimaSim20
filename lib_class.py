@@ -241,14 +241,14 @@ class Building(object):
         # do calculations
         if damp_cmd:
             coeff = 1.0
-            self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm + 1) - temp_rm) * (ti_diff / tau_rm)
-            self.__temp_constr[1] = temp_con + ((avg_con * coeff * temp_rm + temp_ins) / (avg_con + 1) - temp_con) * (ti_diff/tau_con)
-            self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * temp_con + temp) / (avg_ins + 1) - temp_ins) * (ti_diff/tau_ins)
+            self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm * coeff + 1) - temp_rm) * (ti_diff / tau_rm)
+            self.__temp_constr[1] = temp_con + ((avg_con * coeff * self.__temp_room[1] + temp_ins) / (avg_con * coeff + 1) - temp_con) * (ti_diff/tau_con)
+            self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * self.__temp_constr[1] + temp) / (avg_ins * coeff + 1) - temp_ins) * (ti_diff/tau_ins)
         else:
             coeff = 0.3
-            self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm + 1) - temp_rm) * (ti_diff / tau_rm)
-            self.__temp_constr[1] = temp_con + ((avg_con * coeff * temp_rm + temp_ins) / (avg_con + 1) - temp_con) * (ti_diff/tau_con)
-            self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * temp_con + temp) / (avg_ins + 1) - temp_ins) * (ti_diff/tau_ins)
+            self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm * coeff + 1) - temp_rm) * (ti_diff / tau_rm)
+            self.__temp_constr[1] = temp_con + ((avg_con * coeff * self.__temp_room[1] + temp_ins) / (avg_con * coeff + 1) - temp_con) * (ti_diff/tau_con)
+            self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * self.__temp_constr[1] + temp) / (avg_ins * coeff + 1) - temp_ins) * (ti_diff/tau_ins)
         # update storage
         self.__temp_room[0] = self.__temp_room[1]
         self.__temp_constr[0] = self.__temp_constr[1]
