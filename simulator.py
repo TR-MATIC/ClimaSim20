@@ -43,7 +43,7 @@ for key in control_values:
 building = Building(op_data["temp_room"])
 building.load_config()
 
-for hrs in range(24):
+for hrs in range(36):
     ambient.get_dates()
     ambient.renew_forecast()
     ambient.renew_dust_measure()
