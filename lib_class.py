@@ -237,6 +237,7 @@ class Building(object):
         # handle timing
         self.__curr_time = time.time()
         ti_diff = (self.__curr_time - self.__last_time) / 3600
+        print("ti_diff : {:1.5}".format(self.__curr_time - self.__last_time))
         self.__last_time = self.__curr_time
         # do calculations
         if damp_cmd:

@@ -43,12 +43,13 @@ for key in control_values:
 building = Building(op_data["temp_room"])
 building.load_config()
 
-for hrs in range(36):
+for hrs in range(48):
     ambient.get_dates()
     ambient.renew_forecast()
     ambient.renew_dust_measure()
 
     for sec in range(3600):
+        print("Elapsed: {}hrs, {}sec, ".format(hrs,sec), end="")
         outside_conditions = ambient.simulate()
         for key in ["temp", "preci", "solar", "dust"]:
             op_data[key] = outside_conditions[key]
@@ -58,15 +59,17 @@ for hrs in range(36):
             op_data[key] = control_values[key]
 
         internal_conditions = building.calculate(op_data["temp"], op_data["temp_sup"], op_data["damp_cmd"])
-        for key in ["temp_room", "temp_constr", "temp_insul"]:
+        print(internal_conditions)
+        for key in internal_conditions:
             op_data[key] = internal_conditions[key]
 
         model_values = controls.calculate(op_data["temp"], op_data["temp_room"], op_data["damp_cmd"], op_data["pump_cmd"], op_data["htg_pos"], op_data["htg_pwr"])
+        print(model_values)
         for key in model_values:
             op_data[key] = model_values[key]
 
         controls.write_JSON({"temp": op_data["temp"], "temp_sup": op_data["temp_sup"], "temp_room": op_data["temp_room"], "temp_extr": op_data["temp_room"]})
 
-        print(op_data)
+        #print(op_data)
 
-        time.sleep(1.0)
+        time.sleep(0.930)
