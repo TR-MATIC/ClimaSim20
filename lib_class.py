@@ -196,7 +196,7 @@ class Ambient(object):
 
 # Simplified model, with sensible response, but without sophisticated modelling and calculations.
 class Building(object):
-    def __init__(self, temp_room=10.0, config_path="building_data.txt"):
+    def __init__(self, temp_room=15.0, config_path="building_data.txt"):
         self.__config_path = config_path
         self.__config = {}
         # room_avg = 1 / List of fields available/expected in TXT configuration.
@@ -207,7 +207,7 @@ class Building(object):
         # insul_tau = 2
         # AVG - coefficient of averaging temperatures, TAU - time constant for 1st order intertia
         self.__temp_room = [temp_room, temp_room]
-        self.__temp_constr = [10.0, 10.0]
+        self.__temp_constr = [12.0, 12.0]
         self.__temp_insul = [10.0, 10.0]
         self.__curr_time = time.time()
         self.__last_time = time.time()
@@ -221,7 +221,7 @@ class Building(object):
             value = line[(marker + 1):].rstrip("\n")
             self.__config.update({key: value})
 
-    def calculate(self, temp, temp_sup):
+    def calculate(self, temp, temp_sup, damp_cmd):
         # prepare data
         temp_rm = self.__temp_room[0]
         temp_con = self.__temp_constr[0]
@@ -237,9 +237,16 @@ class Building(object):
         ti_diff = (self.__curr_time - self.__last_time) / 3600
         self.__last_time = self.__curr_time
         # do calculations
-        self.__temp_room[1] = temp_rm + ((avg_rm * temp_sup + temp_con) / (avg_rm + 1) - temp_rm) * (ti_diff / tau_rm)
-        self.__temp_constr[1] = temp_con + ((avg_con * temp_rm + temp_ins) / (avg_con + 1) - temp_con) * (ti_diff/tau_con)
-        self.__temp_insul[1] = temp_ins + ((avg_ins * temp_con + temp) / (avg_ins + 1) - temp_ins) * (ti_diff/tau_ins)
+        if damp_cmd:
+            coeff = 1.0
+            self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm + 1) - temp_rm) * (ti_diff / tau_rm)
+            self.__temp_constr[1] = temp_con + ((avg_con * coeff * temp_rm + temp_ins) / (avg_con + 1) - temp_con) * (ti_diff/tau_con)
+            self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * temp_con + temp) / (avg_ins + 1) - temp_ins) * (ti_diff/tau_ins)
+        else:
+            coeff = 0.3
+            self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm + 1) - temp_rm) * (ti_diff / tau_rm)
+            self.__temp_constr[1] = temp_con + ((avg_con * coeff * temp_rm + temp_ins) / (avg_con + 1) - temp_con) * (ti_diff/tau_con)
+            self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * temp_con + temp) / (avg_ins + 1) - temp_ins) * (ti_diff/tau_ins)
         # update storage
         self.__temp_room[0] = self.__temp_room[1]
         self.__temp_constr[0] = self.__temp_constr[1]

@@ -57,7 +57,7 @@ for hrs in range(36):
         for key in control_values:
             op_data[key] = control_values[key]
 
-        internal_conditions = building.calculate(op_data["temp"], op_data["temp_sup"])
+        internal_conditions = building.calculate(op_data["temp"], op_data["temp_sup"], op_data["damp_cmd"])
         for key in ["temp_room", "temp_constr", "temp_insul"]:
             op_data[key] = internal_conditions[key]
 
