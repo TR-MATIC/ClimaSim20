@@ -37,6 +37,7 @@ class Ambient(object):
     def load_config(self):
         config_file = open(self.__config_path, mode="r")
         config_data = config_file.readlines()
+        config_file.close()
         for line in config_data:
             marker = line.find("=")
             key = line[0:marker]
@@ -215,6 +216,7 @@ class Building(object):
     def load_config(self):
         config_file = open(self.__config_path, mode="r")
         config_data = config_file.readlines()
+        config_file.close()
         for line in config_data:
             marker = line.find("=")
             key = line[0:marker]
@@ -294,6 +296,7 @@ class Climatix(object):
     def load_config(self):
         config_file = open(self.__config_path, mode="r")
         config_data = config_file.readlines()
+        config_file.close()
         for line in config_data:
             marker = line.find("=")
             key = line[0:marker]
