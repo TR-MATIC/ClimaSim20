@@ -43,9 +43,11 @@ class Ambient(object):
             key = line[0:marker]
             value = line[(marker + 1):].rstrip("\n")
             self.__config.update({key: value})
+        return True
 
     def create_meteo_headers(self):
         self.__meteo_headers.update({"Authorization": "Token {}".format(self.__config["meteo_api_key"])})
+        return True
 
     def get_coordinates(self):
         coordinates_url = "{}/api/{}/model/{}/grid/{}/latlon2rowcol/{},{}".format\
@@ -59,6 +61,7 @@ class Ambient(object):
         row = coordinates.json()["points"][0]["row"]
         col = coordinates.json()["points"][0]["col"]
         self.__meteo_coordinates = "{},{}".format(row, col)
+        return True
 
     def get_dates(self):
         for cnt in range(4):
@@ -197,7 +200,7 @@ class Ambient(object):
 
 # Simplified model, with sensible response, but without sophisticated modelling and calculations.
 class Building(object):
-    def __init__(self, temp_room=15.0, config_path="building_data.txt"):
+    def __init__(self, temp_room=15.0, temp_constr=12.0, temp_insul=10.0, config_path="building_data.txt"):
         self.__config_path = config_path
         self.__config = {}
         # room_avg = 1 / List of fields available/expected in TXT configuration.
@@ -208,8 +211,8 @@ class Building(object):
         # insul_tau = 2
         # AVG - coefficient of averaging temperatures, TAU - time constant for 1st order intertia
         self.__temp_room = [temp_room, temp_room]
-        self.__temp_constr = [12.0, 12.0]
-        self.__temp_insul = [10.0, 10.0]
+        self.__temp_constr = [temp_constr, temp_constr]
+        self.__temp_insul = [temp_insul, temp_insul]
         self.__curr_time = time.time()
         self.__last_time = time.time()
 
@@ -222,6 +225,7 @@ class Building(object):
             key = line[0:marker]
             value = line[(marker + 1):].rstrip("\n")
             self.__config.update({key: value})
+        return True
 
     def calculate(self, temp, temp_sup, damp_cmd):
         # prepare data
@@ -303,6 +307,7 @@ class Climatix(object):
             key = line[0:marker]
             value = line[(marker + 1):].rstrip("\n")
             self.__config.update({key: value})
+        return True
 
     def climatix_auth(self):
         climatix_auth = (self.__config["climatix_name"], self.__config["climatix_pass"])
@@ -383,3 +388,58 @@ class Climatix(object):
             flow_sup = 0.0
             temp_sup = temp_room
         return {"flow_sup": flow_sup, "temp_sup": temp_sup, "htg_pwr": htg_pwr}
+
+
+class Handler(object):
+    def __init__(self, op_data_path="op_data.txt", dump_file_name="dump"):
+        self.__op_data_path = op_data_path
+        self.__timestamp = time.strftime("_%y%m%d_%H%M")
+        self.__dump_file_path = dump_file_name + self.__timestamp + ".txt"
+
+    def recover_op_data(self, op_data: dict):
+        new_file = False
+        try:
+            op_data_file = open(self.__op_data_path, mode="r")
+        except FileNotFoundError:
+            op_data_file = open(self.__op_data_path, mode="w")
+            new_file = True
+        if not new_file:
+            file_content = op_data_file.readlines()
+            op_data_file.close()
+            for line in file_content:
+                marker = line.find("=")
+                key = line[0:marker]
+                value = line[(marker + 1):].rstrip("\n")
+                if value == "True":
+                    op_data.update({key: True})
+                elif value == "False":
+                    op_data.update({key: False})
+                else:
+                    op_data.update({key: float(value)})
+        else:
+            for key in op_data:
+                line = "{}={}\n".format(key, op_data[key])
+                op_data_file.writelines(line)
+            op_data_file.close()
+        return op_data
+
+    def store_op_data(self, op_data: dict):
+        op_data_file = open(self.__op_data_path, mode="w")
+        for key in op_data:
+            line = "{}={}\n".format(key, op_data[key])
+            op_data_file.writelines(line)
+        op_data_file.close()
+        return True
+
+    def dump_to_file(self, op_data: dict):
+        report_file = open(self.__dump_file_path, mode="a")
+        line = "{} : ".format(time.strftime("%H:%M"))
+        for key in op_data:
+            if op_data[key] in (True, False):
+                line = line + "{}={}; ".format(key, op_data[key])
+            else:
+                line = line + "{}={:.3f}; ".format(key, op_data[key])
+        line = line + "\n"
+        report_file.writelines(line)
+        report_file.close()
+        return True

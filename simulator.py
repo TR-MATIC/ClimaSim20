@@ -1,5 +1,5 @@
 # packages
-from lib_class import Ambient, Building, Climatix
+from lib_class import Ambient, Building, Climatix, Handler
 import time
 
 
@@ -40,7 +40,10 @@ control_values = controls.read_JSON(["damp_cmd", "pump_cmd", "htg_pos", "temp", 
 for key in control_values:
     op_data[key] = control_values[key]
 
-building = Building(op_data["temp_room"])
+data_handler = Handler()
+op_data = data_handler.recover_op_data(op_data)
+
+building = Building(op_data["temp_room"], op_data["temp_constr"], op_data["temp_insul"])
 building.load_config()
 
 for hrs in range(48):
@@ -70,6 +73,7 @@ for hrs in range(48):
 
         controls.write_JSON({"temp": op_data["temp"], "temp_sup": op_data["temp_sup"], "temp_room": op_data["temp_room"], "temp_extr": op_data["temp_room"]})
 
-        #print(op_data)
-
+        if (sec % 60) == 0:
+            data_handler.store_op_data(op_data)
+            data_handler.dump_to_file(op_data)
         time.sleep(0.930)
