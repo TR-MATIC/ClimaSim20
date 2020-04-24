@@ -47,7 +47,6 @@ building = Building(op_data["temp_room"], op_data["temp_constr"], op_data["temp_
 building.load_config()
 
 for hrs in range(48):
-#    ambient.get_dates()
     ambient.renew_forecast()
     ambient.renew_dust_measure()
 
@@ -76,4 +75,4 @@ for hrs in range(48):
         if (sec % 60) == 0:
             data_handler.store_op_data(op_data)
             data_handler.dump_to_file(op_data)
-        time.sleep(0.930)
+        time.sleep(0.910)
