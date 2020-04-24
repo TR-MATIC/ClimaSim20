@@ -63,24 +63,26 @@ class Ambient(object):
         self.__meteo_coordinates = "{},{}".format(row, col)
         return True
 
-    def get_dates(self):
-        for cnt in range(4):
-            time_stamp = time.time() - (cnt + 1) * 6 * 3600
-            stamp_hour = datetime.fromtimestamp(time_stamp).hour
-            if stamp_hour < 6:
-                hour = "00"
-            elif stamp_hour < 12:
-                hour = "06"
-            elif stamp_hour < 18:
-                hour = "12"
-            else:
-                hour = "18"
-            meteo_date = datetime.fromtimestamp(time_stamp).strftime("%Y-%m-%d")
-            meteo_hour = hour
-            self.__meteo_dates[cnt] = "{}T{}".format(meteo_date, meteo_hour)
-        return True
 
-    def data_point_url(self, field, level, meteo_date):
+    def get_date(self, field, level):
+        dates_url = "{}/api/{}/model/{}/grid/{}/coordinates/{}/field/{}/level/{}/date/".format\
+            (self.__config["meteo_url"],
+             self.__config["api"],
+             self.__config["model"],
+             self.__config["grid"],
+             self.__meteo_coordinates,
+             field,
+             level)
+        date_entries = requests.get(dates_url, headers=self.__meteo_headers)
+        how_many = len(date_entries.json()["dates"])
+        last_entry = date_entries.json()["dates"][how_many-1]
+        starting_date = datetime.fromisoformat(last_entry["starting-date"])
+        count = last_entry["count"]
+        interval = last_entry["interval"]
+        latest_valid_date = datetime.fromtimestamp(starting_date.timestamp() + (count - 1) * interval * 3600)
+        return latest_valid_date.strftime("%Y-%m-%dT%H")
+
+    def data_point_url(self, field, level):
         forecast_url = "{}/api/{}/model/{}/grid/{}/coordinates/{}/field/{}/level/{}/date/{}/forecast/".format\
             (self.__config["meteo_url"],
              self.__config["api"],
@@ -89,7 +91,7 @@ class Ambient(object):
              self.__meteo_coordinates,
              field,
              level,
-             meteo_date)
+             self.get_date(field, level))
         info_url = "{}/api/{}/model/{}/grid/{}/coordinates/{}/field/{}/level/{}/date/{}/info/".format\
             (self.__config["meteo_url"],
              self.__config["api"],
@@ -98,11 +100,11 @@ class Ambient(object):
              self.__meteo_coordinates,
              field,
              level,
-             meteo_date)
+             self.get_date(field, level))
         return {"forecast": forecast_url, "info": info_url}
 
     def get_forecast(self, field, level, meteo_date):
-        response = requests.post(self.data_point_url(field, level, meteo_date)["forecast"], headers=self.__meteo_headers)
+        response = requests.post(self.data_point_url(field, level)["forecast"], headers=self.__meteo_headers)
         return response.json()
 
     def renew_forecast(self):
@@ -342,7 +344,7 @@ class Climatix(object):
                     response.update({ao_list[cnt]: received[key]})
         return response
 
-    def climatix_params_w(self, ao_dict):
+    def climatix_params_w(self, ao_dict: dict):
         climatix_params = {"fn": "write"}
         params_list = []
         for key in ao_dict:
@@ -352,7 +354,7 @@ class Climatix(object):
         climatix_params.update({"pin": self.__config["climatix_pin"]})
         return climatix_params
 
-    def write_JSON(self, ao_dict):
+    def write_JSON(self, ao_dict: dict):
         response = {}
         try:
             climatix_get = requests.get(
@@ -443,3 +445,9 @@ class Handler(object):
         report_file.writelines(line)
         report_file.close()
         return True
+
+#test_ambient = Ambient()
+#test_ambient.load_config()
+#test_ambient.create_meteo_headers()
+#test_ambient.get_coordinates()
+#test_ambient.get_date("T2", "0")

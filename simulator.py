@@ -47,7 +47,7 @@ building = Building(op_data["temp_room"], op_data["temp_constr"], op_data["temp_
 building.load_config()
 
 for hrs in range(48):
-    ambient.get_dates()
+#    ambient.get_dates()
     ambient.renew_forecast()
     ambient.renew_dust_measure()
 
