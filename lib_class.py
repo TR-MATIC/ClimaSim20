@@ -27,7 +27,6 @@ class Ambient(object):
         # pm10_id
         self.__meteo_headers = {}
         self.__meteo_coordinates = ""
-        self.__meteo_dates = ["", "", "", ""]
         self.__temperature = {}
         self.__precipitation = {}
         self.__solar_radiation = {}
@@ -62,7 +61,6 @@ class Ambient(object):
         col = coordinates.json()["points"][0]["col"]
         self.__meteo_coordinates = "{},{}".format(row, col)
         return True
-
 
     def get_date(self, field, level):
         dates_url = "{}/api/{}/model/{}/grid/{}/coordinates/{}/field/{}/level/{}/date/".format\
@@ -103,28 +101,16 @@ class Ambient(object):
              self.get_date(field, level))
         return {"forecast": forecast_url, "info": info_url}
 
-    def get_forecast(self, field, level, meteo_date):
+    def get_forecast(self, field, level):
         response = requests.post(self.data_point_url(field, level)["forecast"], headers=self.__meteo_headers)
         return response.json()
 
     def renew_forecast(self):
-        for meteo_date in self.__meteo_dates:
-            temperature_forecast = self.get_forecast\
-                (self.__config["temperature_field"], self.__config["temperature_level"], meteo_date)
-            if "no forecast" not in str(temperature_forecast):
-                break
+        temperature_forecast = self.get_forecast(self.__config["temperature_field"], self.__config["temperature_level"])
         self.__temperature = temperature_forecast
-        for meteo_date in self.__meteo_dates:
-            precipitation_forecast = self.get_forecast\
-                (self.__config["precipitation_field"], self.__config["precipitation_level"], meteo_date)
-            if "no forecast" not in str(precipitation_forecast):
-                break
+        precipitation_forecast = self.get_forecast(self.__config["precipitation_field"], self.__config["precipitation_level"])
         self.__precipitation = precipitation_forecast
-        for meteo_date in self.__meteo_dates:
-            solar_radiation_forecast = self.get_forecast\
-                (self.__config["solar_radiation_field"], self.__config["solar_radiation_level"], meteo_date)
-            if "no forecast" not in str(solar_radiation_forecast):
-                break
+        solar_radiation_forecast = self.get_forecast(self.__config["solar_radiation_field"], self.__config["solar_radiation_level"])
         self.__solar_radiation = solar_radiation_forecast
         return True
 
@@ -445,9 +431,3 @@ class Handler(object):
         report_file.writelines(line)
         report_file.close()
         return True
-
-#test_ambient = Ambient()
-#test_ambient.load_config()
-#test_ambient.create_meteo_headers()
-#test_ambient.get_coordinates()
-#test_ambient.get_date("T2", "0")
