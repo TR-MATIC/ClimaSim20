@@ -102,8 +102,18 @@ class Ambient(object):
         return {"forecast": forecast_url, "info": info_url}
 
     def get_forecast(self, field, level):
-        response = requests.post(self.data_point_url(field, level)["forecast"], headers=self.__meteo_headers)
-        return response.json()
+        try:
+            response = requests.post(self.data_point_url(field, level)["forecast"], headers=self.__meteo_headers)
+            output = response.json()
+        except requests.exceptions.HTTPError as http_error:
+            output = {"exception": str(http_error)}
+        except requests.exceptions.ConnectTimeout:
+            output = {"exception": "tout_error"}
+        except requests.exceptions.ConnectionError:
+            output = {"exception": "conn_error"}
+        except:
+            output = {"exception": "othr_error"}
+        return output
 
     def renew_forecast(self):
         temperature_forecast = self.get_forecast(self.__config["temperature_field"], self.__config["temperature_level"])
