@@ -36,27 +36,32 @@ controls = Climatix()
 controls.load_config()
 controls.climatix_auth()
 # 1st time initialization, to start from good values, not from zeros
-control_values = controls.read_JSON(["damp_cmd", "pump_cmd", "htg_pos", "temp", "temp_sup", "temp_room", "temp_extr"])
+control_values = controls.read_json(["damp_cmd", "pump_cmd", "htg_pos", "temp", "temp_sup", "temp_room", "temp_extr"])
 for key in control_values:
     op_data[key] = control_values[key]
 
 data_handler = Handler()
 op_data = data_handler.recover_op_data(op_data)
+hrs = sec = 0
 
 building = Building(op_data["temp_room"], op_data["temp_constr"], op_data["temp_insul"])
 building.load_config()
 
-for hrs in range(48):
+while hrs < 48:
     ambient.renew_forecast()
     ambient.renew_dust_measure()
 
-    for sec in range(3600):
+    while sec < 3600:
+        trig = False
+        while not trig:
+            time.sleep(0.025)
+            trig, hrs, sec = data_handler.timer(3) #timer triggers script execution in 3-second steps
         print("Elapsed: {}hrs, {}sec, ".format(hrs,sec), end="")
         outside_conditions = ambient.simulate()
         for key in ["temp", "preci", "solar", "dust"]:
             op_data[key] = outside_conditions[key]
 
-        control_values = controls.read_JSON(["damp_cmd", "pump_cmd", "htg_pos"])
+        control_values = controls.read_json(["damp_cmd", "pump_cmd", "clg_cmd", "htg_pos", "clg_pos"])
         for key in control_values:
             op_data[key] = control_values[key]
 
@@ -65,14 +70,20 @@ for hrs in range(48):
         for key in internal_conditions:
             op_data[key] = internal_conditions[key]
 
-        model_values = controls.calculate(op_data["temp"], op_data["temp_room"], op_data["damp_cmd"], op_data["pump_cmd"], op_data["htg_pos"], op_data["htg_pwr"])
+        model_values = controls.calculate(op_data["temp"], op_data["temp_room"], op_data["damp_cmd"],
+                                          op_data["pump_cmd"], op_data["clg_cmd"], op_data["htg_pos"],
+                                          op_data["clg_pos"], op_data["htg_pwr"], op_data["clg_pwr"])
         print(model_values)
         for key in model_values:
             op_data[key] = model_values[key]
 
-        controls.write_JSON({"temp": op_data["temp"], "temp_sup": op_data["temp_sup"], "temp_room": op_data["temp_room"], "temp_extr": op_data["temp_room"]})
+        controls.write_json({"temp": op_data["temp"],
+                             "temp_sup": op_data["temp_sup"],
+                             "temp_room": op_data["temp_room"],
+                             "temp_extr": op_data["temp_room"]})
 
         if (sec % 60) == 0:
             data_handler.store_op_data(op_data)
             data_handler.dump_to_file(op_data)
-        time.sleep(0.910)
+            if "error" in op_data.keys():
+                op_data.pop("error")

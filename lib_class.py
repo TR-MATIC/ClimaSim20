@@ -30,7 +30,7 @@ class Ambient(object):
         self.__temperature = {}
         self.__precipitation = {}
         self.__solar_radiation = {}
-        self.__dust_measure = {"times":[], "data":[]}
+        self.__dust_measure = {"times": [], "data": []}
         self.__current = {"temp": 0.0, "preci": 0.0, "solar": 0.0, "dust": 0.0}
 
     def load_config(self):
@@ -49,92 +49,147 @@ class Ambient(object):
         return True
 
     def get_coordinates(self):
-        coordinates_url = "{}/api/{}/model/{}/grid/{}/latlon2rowcol/{},{}".format\
-            (self.__config["meteo_url"],
-             self.__config["api"],
-             self.__config["model"],
-             self.__config["grid"],
-             self.__config["latitude"],
-             self.__config["longitude"])
-        coordinates = requests.get(coordinates_url, headers=self.__meteo_headers)
-        row = coordinates.json()["points"][0]["row"]
-        col = coordinates.json()["points"][0]["col"]
-        self.__meteo_coordinates = "{},{}".format(row, col)
-        return True
+        coordinates_url = "{}/api/{}/model/{}/grid/{}/latlon2rowcol/{},{}".format(
+            self.__config["meteo_url"],
+            self.__config["api"],
+            self.__config["model"],
+            self.__config["grid"],
+            self.__config["latitude"],
+            self.__config["longitude"])
+        try:
+            coordinates = requests.get(
+                coordinates_url,
+                headers=self.__meteo_headers,
+                timeout=0.500)
+        except requests.Timeout:
+            output = {"error": "get_co_tout"}
+        except requests.ConnectionError:
+            output = {"error": "get_co_conn"}
+        except:
+            output = {"error": "get_co_othr"}
+        else:
+            if coordinates.status_code == 200:
+                output = {"error": "get_co_none"}
+                row = coordinates.json()["points"][0]["row"]
+                col = coordinates.json()["points"][0]["col"]
+                self.__meteo_coordinates = "{},{}".format(row, col)
+            else:
+                output = {"error": "get_co_" + str(coordinates.status_code)}
+        return output
 
     def get_date(self, field, level):
-        dates_url = "{}/api/{}/model/{}/grid/{}/coordinates/{}/field/{}/level/{}/date/".format\
-            (self.__config["meteo_url"],
-             self.__config["api"],
-             self.__config["model"],
-             self.__config["grid"],
-             self.__meteo_coordinates,
-             field,
-             level)
-        date_entries = requests.get(dates_url, headers=self.__meteo_headers)
-        how_many = len(date_entries.json()["dates"])
-        last_entry = date_entries.json()["dates"][how_many-1]
-        starting_date = datetime.fromisoformat(last_entry["starting-date"])
-        count = last_entry["count"]
-        interval = last_entry["interval"]
-        latest_valid_date = datetime.fromtimestamp(starting_date.timestamp() + (count - 1) * interval * 3600)
-        return latest_valid_date.strftime("%Y-%m-%dT%H")
+        dates_url = "{}/api/{}/model/{}/grid/{}/coordinates/{}/field/{}/level/{}/date/".format(
+            self.__config["meteo_url"],
+            self.__config["api"],
+            self.__config["model"],
+            self.__config["grid"],
+            self.__meteo_coordinates,
+            field,
+            level)
+        try:
+            date_entries = requests.get(
+                dates_url,
+                headers=self.__meteo_headers,
+                timeout=0.500)
+        except requests.Timeout:
+            output = {"error": "get_da_tout"}
+        except requests.ConnectionError:
+            output = {"error": "get_da_conn"}
+        except:
+            output = {"error": "get_da_othr"}
+        else:
+            if date_entries.status_code == 200:
+                how_many = len(date_entries.json()["dates"])
+                last_entry = date_entries.json()["dates"][how_many-1]
+                starting_date = datetime.fromisoformat(last_entry["starting-date"])
+                count = last_entry["count"]
+                interval = last_entry["interval"]
+                latest_valid_date = datetime.fromtimestamp(starting_date.timestamp() + (count - 1) * interval * 3600)
+                output = latest_valid_date.strftime("%Y-%m-%dT%H")
+            else:
+                output = {"error": "get_da_" + str(date_entries.status_code)}
+        return output
 
     def data_point_url(self, field, level):
-        forecast_url = "{}/api/{}/model/{}/grid/{}/coordinates/{}/field/{}/level/{}/date/{}/forecast/".format\
-            (self.__config["meteo_url"],
-             self.__config["api"],
-             self.__config["model"],
-             self.__config["grid"],
-             self.__meteo_coordinates,
-             field,
-             level,
-             self.get_date(field, level))
-        info_url = "{}/api/{}/model/{}/grid/{}/coordinates/{}/field/{}/level/{}/date/{}/info/".format\
-            (self.__config["meteo_url"],
-             self.__config["api"],
-             self.__config["model"],
-             self.__config["grid"],
-             self.__meteo_coordinates,
-             field,
-             level,
-             self.get_date(field, level))
+        forecast_url = "{}/api/{}/model/{}/grid/{}/coordinates/{}/field/{}/level/{}/date/{}/forecast/".format(
+            self.__config["meteo_url"],
+            self.__config["api"],
+            self.__config["model"],
+            self.__config["grid"],
+            self.__meteo_coordinates,
+            field,
+            level,
+            self.get_date(field, level))
+        info_url = "{}/api/{}/model/{}/grid/{}/coordinates/{}/field/{}/level/{}/date/{}/info/".format(
+            self.__config["meteo_url"],
+            self.__config["api"],
+            self.__config["model"],
+            self.__config["grid"],
+            self.__meteo_coordinates,
+            field,
+            level,
+            self.get_date(field, level))
         return {"forecast": forecast_url, "info": info_url}
 
     def get_forecast(self, field, level):
         try:
-            response = requests.post(self.data_point_url(field, level)["forecast"], headers=self.__meteo_headers)
-            output = response.json()
-        except requests.exceptions.HTTPError as http_error:
-            output = {"exception": str(http_error)}
-        except requests.exceptions.ConnectTimeout:
-            output = {"exception": "tout_error"}
-        except requests.exceptions.ConnectionError:
-            output = {"exception": "conn_error"}
+            response = requests.post(
+                self.data_point_url(field, level)["forecast"],
+                headers=self.__meteo_headers,
+                timeout=0.500)
+        except requests.Timeout:
+            output = {"error": "get_fo_tout"}
+        except requests.ConnectionError:
+            output = {"error": "get_fo_conn"}
         except:
-            output = {"exception": "othr_error"}
+            output = {"error": "get_fo_othr"}
+        else:
+            if response.status_code == 200:
+                output = response.json()
+            else:
+                output = {"error": "get_fo_" + str(response.status_code)}
+        print(output)
         return output
 
     def renew_forecast(self):
-        temperature_forecast = self.get_forecast(self.__config["temperature_field"], self.__config["temperature_level"])
+        temperature_forecast = self.get_forecast(
+            self.__config["temperature_field"],
+            self.__config["temperature_level"])
         self.__temperature = temperature_forecast
-        precipitation_forecast = self.get_forecast(self.__config["precipitation_field"], self.__config["precipitation_level"])
+        precipitation_forecast = self.get_forecast(
+            self.__config["precipitation_field"],
+            self.__config["precipitation_level"])
         self.__precipitation = precipitation_forecast
-        solar_radiation_forecast = self.get_forecast(self.__config["solar_radiation_field"], self.__config["solar_radiation_level"])
+        solar_radiation_forecast = self.get_forecast(
+            self.__config["solar_radiation_field"],
+            self.__config["solar_radiation_level"])
         self.__solar_radiation = solar_radiation_forecast
         return True
 
     def renew_dust_measure(self):
         pm10_url = self.__config["gios_url"] + self.__config["pm10_id"]
-        dust_record = requests.get(pm10_url).json()
-        for data in dust_record["values"]:
-            if data["value"] not in ["None", None]:
-                dust_measure = float(data["value"])
+        try:
+            dust_data = requests.get(pm10_url, timeout=0.500)
+        except requests.Timeout:
+            output = {"error": "get_du_tout"}
+        except requests.ConnectionError:
+            output = {"error": "get_du_conn"}
+        except:
+            output = {"error": "get_du_othr"}
+        else:
+            if dust_data.status_code == 200:
+                dust_record = dust_data.json()
+                for data in dust_record["values"]:
+                    if data["value"] not in ["None", None]:
+                        dust_measure = float(data["value"])
+                    else:
+                        dust_measure = 0.0
+                    self.__dust_measure["times"].append(data["date"][0:16])
+                    self.__dust_measure["data"].append(dust_measure)
+                output = {"error": "get_du_none"}
             else:
-                dust_measure = 0.0
-            self.__dust_measure["times"].append(data["date"][0:16])
-            self.__dust_measure["data"].append(dust_measure)
-        return True
+                output = {"error": "get_du_" + str(dust_data.status_code)}
+        return output
 
     def simulate(self):
         current_date = time.strftime("%Y-%m-%d")
@@ -155,27 +210,30 @@ class Ambient(object):
         # between the moment defined by last_timestamp and the one after
         # elapsed_minutes define how much time have passed from the last_timestamp
         last_temp = next_temp = 0.0
-        for index, timestamp in enumerate(self.__temperature["times"]):
-            if last_timestamp in timestamp:
-                last_temp = float(self.__temperature["data"][index]) - 273.0
-                next_temp = float(self.__temperature["data"][index + 1]) - 273.0
-                break
+        if "times" in self.__temperature.keys():
+            for index, timestamp in enumerate(self.__temperature["times"]):
+                if last_timestamp in timestamp:
+                    last_temp = float(self.__temperature["data"][index]) - 273.0
+                    next_temp = float(self.__temperature["data"][index + 1]) - 273.0
+                    break
         self.__current["temp"] = last_temp + 1/360 * elapsed_minutes * (next_temp - last_temp)
         # This part of the code calculates current precipitation
         last_preci = next_preci = 0.0
-        for index, timestamp in enumerate(self.__precipitation["times"]):
-            if last_timestamp in timestamp:
-                last_preci = float(self.__precipitation["data"][index])
-                next_preci = float(self.__precipitation["data"][index + 1])
-                break
+        if "times" in self.__precipitation.keys():
+            for index, timestamp in enumerate(self.__precipitation["times"]):
+                if last_timestamp in timestamp:
+                    last_preci = float(self.__precipitation["data"][index])
+                    next_preci = float(self.__precipitation["data"][index + 1])
+                    break
         self.__current["preci"] = last_preci + 1/360 * elapsed_minutes * (next_preci - last_preci)
         # This part of the code calculates current solar radiation
         last_solar = next_solar = 0.0
-        for index, timestamp in enumerate(self.__solar_radiation["times"]):
-            if last_timestamp in timestamp:
-                last_solar = float(self.__solar_radiation["data"][index])
-                next_solar = float(self.__solar_radiation["data"][index + 1])
-                break
+        if "times" in self.__precipitation.keys():
+            for index, timestamp in enumerate(self.__solar_radiation["times"]):
+                if last_timestamp in timestamp:
+                    last_solar = float(self.__solar_radiation["data"][index])
+                    next_solar = float(self.__solar_radiation["data"][index + 1])
+                    break
         self.__current["solar"] = last_solar + 1/360 * elapsed_minutes * (next_solar - last_solar)
         # Current PM10 dust concentration must be calculated as well, but the data comes from another API
         # This API responds with historical data, not simulated future values. Moreover, data for current hour
@@ -183,16 +241,16 @@ class Ambient(object):
         # And finally, this data is prepared in 1-hour slices - not in 6-hour slices. Funny, isn't it? ;)
         # Extrapolation algorithm must be smart enough to handle that.
         elapsed_minutes = int(current_min)
-        dust_N0 = self.__dust_measure["data"][0]
-        dust_N1 = self.__dust_measure["data"][1]
-        dust_N2 = self.__dust_measure["data"][2]
-        dust_N3 = self.__dust_measure["data"][3]
-        if dust_N0 > 0.0:
-            self.__current["dust"] = dust_N0 + 1/60 * elapsed_minutes * (dust_N0 - dust_N1)
-        elif dust_N1 > 0.0:
-            self.__current["dust"] = dust_N1 + 1/60 * elapsed_minutes * (dust_N1 - dust_N2)
+        dust_n0 = self.__dust_measure["data"][0]
+        dust_n1 = self.__dust_measure["data"][1]
+        dust_n2 = self.__dust_measure["data"][2]
+        dust_n3 = self.__dust_measure["data"][3]
+        if dust_n0 > 0.0:
+            self.__current["dust"] = dust_n0 + 1/60 * elapsed_minutes * (dust_n0 - dust_n1)
+        elif dust_n1 > 0.0:
+            self.__current["dust"] = dust_n1 + 1/60 * elapsed_minutes * (dust_n1 - dust_n2)
         else:
-            self.__current["dust"] = dust_N2 + 1/60 * elapsed_minutes * (dust_N2 - dust_N3)
+            self.__current["dust"] = dust_n2 + 1/60 * elapsed_minutes * (dust_n2 - dust_n3)
         return self.__current
 
 
@@ -295,6 +353,7 @@ class Climatix(object):
         # FanSuCmd = CCKoVRoD
         # FanExCmd = CCJ / ORoD
         # HtgPos = BiJhZhoD
+        # ClgPos =
 
     def load_config(self):
         config_file = open(self.__config_path, mode="r")
@@ -320,8 +379,8 @@ class Climatix(object):
         climatix_params.update({"pin": self.__config["climatix_pin"]})
         return climatix_params
 
-    def read_JSON(self, ao_list):
-        response = {}
+    def read_json(self, ao_list):
+        output = {}
         climatix_params = self.climatix_params_r(ao_list)
         try:
             climatix_get = requests.get(
@@ -329,16 +388,23 @@ class Climatix(object):
                 auth=self.climatix_auth(),
                 params=climatix_params,
                 timeout=0.500)
+        except requests.Timeout:
+            output = {"error": "get_rd_tout"}
+        except requests.ConnectionError:
+            output = {"error": "get_rd_conn"}
         except:
-            pass
+            output = {"error": "get_rd_othr"}
         else:
-            received = climatix_get.json()["values"]
-            for cnt, key in enumerate(received):
-                if type(received[key]) == list:
-                    response.update({ao_list[cnt]: received[key][0]})
-                else:
-                    response.update({ao_list[cnt]: received[key]})
-        return response
+            if climatix_get.status_code == 200:
+                received = climatix_get.json()["values"]
+                for cnt, key in enumerate(received):
+                    if type(received[key]) == list:
+                        output.update({ao_list[cnt]: received[key][0]})
+                    else:
+                        output.update({ao_list[cnt]: received[key]})
+            else:
+                output = {"error": "get_rd_" + str(climatix_get.status_code)}
+        return output
 
     def climatix_params_w(self, ao_dict: dict):
         climatix_params = {"fn": "write"}
@@ -350,21 +416,29 @@ class Climatix(object):
         climatix_params.update({"pin": self.__config["climatix_pin"]})
         return climatix_params
 
-    def write_JSON(self, ao_dict: dict):
-        response = {}
+    def write_json(self, ao_dict: dict):
+        output = {}
         try:
             climatix_get = requests.get(
                 self.__config["climatix_url"],
                 auth=self.climatix_auth(),
-                params=self.climatix_params_w(ao_dict)
-            )
+                params=self.climatix_params_w(ao_dict),
+                timeout=0.500)
+        except requests.Timeout:
+            output = {"error": "get_wr_tout"}
+        except requests.ConnectionError:
+            output = {"error": "get_wr_conn"}
         except:
-            pass
+            output = {"error": "get_wr_othr"}
         else:
-            response = climatix_get.json()
-        return response
+            if climatix_get.status_code == 200:
+                output = climatix_get.json()
+            else:
+                output = {"error": "get_wr_" + str(climatix_get.status_code)}
+        return output
 
-    def calculate(self, temp, temp_room, damp_cmd, pump_cmd, htg_pos, htg_pwr):
+    def calculate(self, temp, temp_room, damp_cmd, pump_cmd, clg_cmd, htg_pos, clg_pos, htg_pwr, clg_pwr):
+        # calculation of heating power from the heater
         htg_pwr_demand = 22.0 * 1/100 * htg_pos
         if pump_cmd:
             if htg_pwr < (htg_pwr_demand - 1.0):
@@ -379,13 +453,28 @@ class Climatix(object):
                 htg_pwr = htg_pwr
         else:
             htg_pwr = 0.0
+        # calculation of cooling power from the cooler
+        clg_pwr_demand = 40.0 * 1/100 * clg_pos
+        if clg_cmd:
+            if clg_pwr < (clg_pwr_demand - 1.0):
+                clg_pwr = clg_pwr + 0.2
+            elif clg_pwr < (clg_pwr_demand - 0.1):
+                clg_pwr = clg_pwr + 0.05
+            elif clg_pwr > (clg_pwr_demand + 1.0):
+                clg_pwr = clg_pwr - 0.2
+            elif clg_pwr > (clg_pwr_demand + 0.1):
+                clg_pwr = clg_pwr - 0.05
+            else:
+                clg_pwr = clg_pwr
+        else:
+            cg_pwr = 0.0
         if damp_cmd:
             flow_sup = 1800
-            temp_sup = temp + htg_pwr * 1000 / ( flow_sup / 3600 * 1.2 * 1005 )
+            temp_sup = temp + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
         else:
             flow_sup = 0.0
             temp_sup = temp_room
-        return {"flow_sup": flow_sup, "temp_sup": temp_sup, "htg_pwr": htg_pwr}
+        return {"flow_sup": flow_sup, "temp_sup": temp_sup, "htg_pwr": htg_pwr, "clg_pwr": clg_pwr}
 
 
 class Handler(object):
@@ -393,6 +482,20 @@ class Handler(object):
         self.__op_data_path = op_data_path
         self.__timestamp = time.strftime("_%y%m%d_%H%M")
         self.__dump_file_path = dump_file_name + self.__timestamp + ".txt"
+        self.__script_started = time.time()
+        self.__total_sec = 0
+        self.__store_sec = 0
+
+    def timer(self, step=2):
+        trig = False
+        self.__total_sec = int(time.time() - self.__script_started)
+        if self.__total_sec > self.__store_sec:
+            trig = (self.__total_sec % step == 0)
+        if trig:
+            self.__store_sec = self.__total_sec
+        elapsed_sec = self.__total_sec % 3600
+        elapsed_hrs = self.__total_sec // 3600
+        return trig, elapsed_hrs, elapsed_sec
 
     def recover_op_data(self, op_data: dict):
         new_file = False
@@ -408,7 +511,9 @@ class Handler(object):
                 marker = line.find("=")
                 key = line[0:marker]
                 value = line[(marker + 1):].rstrip("\n")
-                if value == "True":
+                if key == "error":
+                    pass
+                elif value == "True":
                     op_data.update({key: True})
                 elif value == "False":
                     op_data.update({key: False})
@@ -434,6 +539,8 @@ class Handler(object):
         line = "{} : ".format(time.strftime("%H:%M"))
         for key in op_data:
             if op_data[key] in (True, False):
+                line = line + "{}={}; ".format(key, op_data[key])
+            elif key in ("error"):
                 line = line + "{}={}; ".format(key, op_data[key])
             else:
                 line = line + "{}={:.3f}; ".format(key, op_data[key])
