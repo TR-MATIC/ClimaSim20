@@ -283,7 +283,7 @@ class Building(object):
             self.__config.update({key: value})
         return True
 
-    def calculate(self, temp, temp_sup, damp_cmd):
+    def calculate(self, temp, temp_sup, damp_cmd, fans_stp):
         # prepare data
         temp_rm = self.__temp_room[0]
         temp_con = self.__temp_constr[0]
@@ -301,10 +301,21 @@ class Building(object):
         self.__last_time = self.__curr_time
         # do calculations
         if damp_cmd:
-            coeff = 1.0
-            self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm * coeff + 1) - temp_rm) * (ti_diff / tau_rm)
-            self.__temp_constr[1] = temp_con + ((avg_con * coeff * self.__temp_room[1] + temp_ins) / (avg_con * coeff + 1) - temp_con) * (ti_diff/tau_con)
-            self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * self.__temp_constr[1] + temp) / (avg_ins * coeff + 1) - temp_ins) * (ti_diff/tau_ins)
+            if fans_stp == 0:
+                coeff = 0.2
+                self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm * coeff + 1) - temp_rm) * (ti_diff / tau_rm)
+                self.__temp_constr[1] = temp_con + ((avg_con * coeff * self.__temp_room[1] + temp_ins) / (avg_con * coeff + 1) - temp_con) * (ti_diff / tau_con)
+                self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * self.__temp_constr[1] + temp) / (avg_ins * coeff + 1) - temp_ins) * (ti_diff / tau_ins)
+            elif fans_stp == 1:
+                coeff = 0.7
+                self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm * coeff + 1) - temp_rm) * (ti_diff / tau_rm)
+                self.__temp_constr[1] = temp_con + ((avg_con * coeff * self.__temp_room[1] + temp_ins) / (avg_con * coeff + 1) - temp_con) * (ti_diff/tau_con)
+                self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * self.__temp_constr[1] + temp) / (avg_ins * coeff + 1) - temp_ins) * (ti_diff/tau_ins)
+            elif fans_stp == 2:
+                coeff = 1.0
+                self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm * coeff + 1) - temp_rm) * (ti_diff / tau_rm)
+                self.__temp_constr[1] = temp_con + ((avg_con * coeff * self.__temp_room[1] + temp_ins) / (avg_con * coeff + 1) - temp_con) * (ti_diff / tau_con)
+                self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * self.__temp_constr[1] + temp) / (avg_ins * coeff + 1) - temp_ins) * (ti_diff / tau_ins)
         else:
             coeff = 0.3
             self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm * coeff + 1) - temp_rm) * (ti_diff / tau_rm)
@@ -437,7 +448,7 @@ class Climatix(object):
                 output = {"error": "get_wr_" + str(climatix_get.status_code)}
         return output
 
-    def calculate(self, temp, temp_room, damp_cmd, pump_cmd, clg_cmd, htg_pos, clg_pos, htg_pwr, clg_pwr):
+    def calculate(self, temp, temp_room, damp_cmd, fans_stp, pump_cmd, clg_cmd, htg_pos, clg_pos, htg_pwr, clg_pwr):
         # calculation of heating power from the heater
         htg_pwr_demand = 22.0 * 1/100 * htg_pos
         if pump_cmd:
@@ -467,10 +478,17 @@ class Climatix(object):
             else:
                 clg_pwr = clg_pwr
         else:
-            cg_pwr = 0.0
+            clg_pwr = 0.0
         if damp_cmd:
-            flow_sup = 1800
-            temp_sup = temp + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
+            if fans_stp == 0:
+                flow_sup = 0.0
+                temp_sup = temp_room
+            elif fans_stp == 1:
+                flow_sup = 1600
+                temp_sup = temp + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
+            elif fans_stp == 2:
+                flow_sup = 2400
+                temp_sup = temp + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
         else:
             flow_sup = 0.0
             temp_sup = temp_room
