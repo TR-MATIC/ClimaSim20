@@ -60,7 +60,7 @@ class Ambient(object):
             coordinates = requests.get(
                 coordinates_url,
                 headers=self.__meteo_headers,
-                timeout=0.750)
+                timeout=1.000)
         except requests.Timeout:
             output = {"error": "get_co_tout"}
         except requests.ConnectionError:
@@ -90,7 +90,7 @@ class Ambient(object):
             date_entries = requests.get(
                 dates_url,
                 headers=self.__meteo_headers,
-                timeout=0.750)
+                timeout=1.000)
         except requests.Timeout:
             output = {"error": "get_da_tout"}
         except requests.ConnectionError:
@@ -136,7 +136,7 @@ class Ambient(object):
             response = requests.post(
                 self.data_point_url(field, level)["forecast"],
                 headers=self.__meteo_headers,
-                timeout=0.750)
+                timeout=1.000)
         except requests.Timeout:
             output = {"error": "get_fo_tout"}
         except requests.ConnectionError:
@@ -189,6 +189,7 @@ class Ambient(object):
                 output = {"error": "get_du_none"}
             else:
                 output = {"error": "get_du_" + str(dust_data.status_code)}
+            print(dust_record)
         return output
 
     def simulate(self):
@@ -248,9 +249,9 @@ class Ambient(object):
         if dust_n0 > 0.0:
             self.__current["dust"] = dust_n0 + 1/60 * elapsed_minutes * (dust_n0 - dust_n1)
         elif dust_n1 > 0.0:
-            self.__current["dust"] = dust_n1 + 1/60 * elapsed_minutes * (dust_n1 - dust_n2)
+            self.__current["dust"] = dust_n1 + 1/60 * (elapsed_minutes + 60) * (dust_n1 - dust_n2)
         else:
-            self.__current["dust"] = dust_n2 + 1/60 * elapsed_minutes * (dust_n2 - dust_n3)
+            self.__current["dust"] = dust_n2 + 1/60 * (elapsed_minutes + 120) * (dust_n2 - dust_n3)
         return self.__current
 
 
@@ -283,7 +284,7 @@ class Building(object):
             self.__config.update({key: value})
         return True
 
-    def calculate(self, temp, temp_sup, damp_cmd, fans_stp):
+    def calculate(self, temp, temp_sup, flow_sup):
         # prepare data
         temp_rm = self.__temp_room[0]
         temp_con = self.__temp_constr[0]
@@ -300,24 +301,13 @@ class Building(object):
         print("ti_diff : {:1.5}".format(self.__curr_time - self.__last_time))
         self.__last_time = self.__curr_time
         # do calculations
-        if damp_cmd:
-            if fans_stp == 0:
-                coeff = 0.2
-                self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm * coeff + 1) - temp_rm) * (ti_diff / tau_rm)
-                self.__temp_constr[1] = temp_con + ((avg_con * coeff * self.__temp_room[1] + temp_ins) / (avg_con * coeff + 1) - temp_con) * (ti_diff / tau_con)
-                self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * self.__temp_constr[1] + temp) / (avg_ins * coeff + 1) - temp_ins) * (ti_diff / tau_ins)
-            elif fans_stp == 1:
-                coeff = 0.7
-                self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm * coeff + 1) - temp_rm) * (ti_diff / tau_rm)
-                self.__temp_constr[1] = temp_con + ((avg_con * coeff * self.__temp_room[1] + temp_ins) / (avg_con * coeff + 1) - temp_con) * (ti_diff/tau_con)
-                self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * self.__temp_constr[1] + temp) / (avg_ins * coeff + 1) - temp_ins) * (ti_diff/tau_ins)
-            elif fans_stp == 2:
-                coeff = 1.0
-                self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm * coeff + 1) - temp_rm) * (ti_diff / tau_rm)
-                self.__temp_constr[1] = temp_con + ((avg_con * coeff * self.__temp_room[1] + temp_ins) / (avg_con * coeff + 1) - temp_con) * (ti_diff / tau_con)
-                self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * self.__temp_constr[1] + temp) / (avg_ins * coeff + 1) - temp_ins) * (ti_diff / tau_ins)
+        if flow_sup > 0.0:
+            coeff = flow_sup/2400.0
+            self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm * coeff + 1) - temp_rm) * (ti_diff / tau_rm)
+            self.__temp_constr[1] = temp_con + ((avg_con * coeff * self.__temp_room[1] + temp_ins) / (avg_con * coeff + 1) - temp_con) * (ti_diff / tau_con)
+            self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * self.__temp_constr[1] + temp) / (avg_ins * coeff + 1) - temp_ins) * (ti_diff / tau_ins)
         else:
-            coeff = 0.3
+            coeff = 0.2
             self.__temp_room[1] = temp_rm + ((avg_rm * coeff * temp_sup + temp_con) / (avg_rm * coeff + 1) - temp_rm) * (ti_diff / tau_rm)
             self.__temp_constr[1] = temp_con + ((avg_con * coeff * self.__temp_room[1] + temp_ins) / (avg_con * coeff + 1) - temp_con) * (ti_diff/tau_con)
             self.__temp_insul[1] = temp_ins + ((avg_ins * coeff * self.__temp_constr[1] + temp) / (avg_ins * coeff + 1) - temp_ins) * (ti_diff/tau_ins)
@@ -448,22 +438,22 @@ class Climatix(object):
                 output = {"error": "get_wr_" + str(climatix_get.status_code)}
         return output
 
-    def calculate(self, temp, temp_room, damp_cmd, fans_stp, pump_cmd, clg_cmd, htg_pos, clg_pos, htg_pwr, clg_pwr):
+    def calculate(self, temp, temp_room, damp_cmd, fans_stp, flow_sup, pump_cmd, clg_cmd, htg_pos, clg_pos, htg_pwr, clg_pwr):
         # calculation of heating power from the heater
-        htg_pwr_demand = 22.0 * 1/100 * htg_pos
         if pump_cmd:
-            if htg_pwr < (htg_pwr_demand - 1.0):
-                htg_pwr = htg_pwr + 0.2
-            elif htg_pwr < (htg_pwr_demand - 0.1):
-                htg_pwr = htg_pwr + 0.05
-            elif htg_pwr > (htg_pwr_demand + 1.0):
-                htg_pwr = htg_pwr - 0.2
-            elif htg_pwr > (htg_pwr_demand + 0.1):
-                htg_pwr = htg_pwr - 0.05
-            else:
-                htg_pwr = htg_pwr
+            htg_pwr_demand = 22.0 * 1/100 * htg_pos
         else:
-            htg_pwr = 0.0
+            htg_pwr_demand = 0.0
+        if htg_pwr < (htg_pwr_demand - 1.0):
+            htg_pwr = htg_pwr + 0.2
+        elif htg_pwr < (htg_pwr_demand - 0.1):
+            htg_pwr = htg_pwr + 0.05
+        elif htg_pwr > (htg_pwr_demand + 1.0):
+            htg_pwr = htg_pwr - 0.2
+        elif htg_pwr > (htg_pwr_demand + 0.1):
+            htg_pwr = htg_pwr - 0.05
+        else:
+            htg_pwr = htg_pwr_demand
         # calculation of cooling power from the cooler
         clg_pwr_demand = 20.0 * 1/100 * clg_pos
         if clg_cmd:
@@ -479,19 +469,35 @@ class Climatix(object):
                 clg_pwr = clg_pwr
         else:
             clg_pwr = 0.0
+        # calculation of fan speed and corresponding air volume flow
+        # the flow demand must be calculated first, according to damper opening and fan step
         if damp_cmd:
             if fans_stp == 0:
-                flow_sup = 0.0
-                temp_sup = temp_room
+                flow_sup_demand = 0.0
             elif fans_stp == 1:
-                flow_sup = 1600
-                temp_sup = temp + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
+                flow_sup_demand = 1600
             elif fans_stp == 2:
-                flow_sup = 2400
-                temp_sup = temp + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
+                flow_sup_demand = 2400
+            else:
+                flow_sup_demand = 2400
         else:
-            flow_sup = 0.0
+            flow_sup_demand = 0.0
+        # then the air volume flow must follow the demand, but with appropriate inertia
+        if flow_sup < (flow_sup_demand - 200):
+            flow_sup = flow_sup + 100
+        elif flow_sup <= (flow_sup_demand - 10):
+            flow_sup = flow_sup + 10
+        elif flow_sup > (flow_sup_demand + 200):
+            flow_sup = flow_sup - 100
+        elif flow_sup >= (flow_sup_demand + 10):
+            flow_sup = flow_sup - 10
+        else:
+            flow_sup = flow_sup_demand
+        # finally, from htg the supply temperature is calculated
+        if flow_sup == 0.0:
             temp_sup = temp_room
+        else:
+            temp_sup = temp + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
         return {"flow_sup": flow_sup, "temp_sup": temp_sup, "htg_pwr": htg_pwr, "clg_pwr": clg_pwr}
 
 
@@ -554,7 +560,7 @@ class Handler(object):
 
     def dump_to_file(self, op_data: dict):
         report_file = open(self.__dump_file_path, mode="a")
-        line = "{} : ".format(time.strftime("%H:%M"))
+        line = "{} ; ".format(time.strftime("%H:%M"))
         for key in op_data:
             if op_data[key] in (True, False):
                 line = line + "{}={}; ".format(key, op_data[key])

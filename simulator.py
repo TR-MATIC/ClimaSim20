@@ -50,44 +50,46 @@ hrs = sec = 0
 building = Building(op_data["temp_room"], op_data["temp_constr"], op_data["temp_insul"])
 building.load_config()
 
-while hrs < 48:
-    ambient.renew_forecast()
-    ambient.renew_dust_measure()
+while hrs < 168:
+    if (sec % 3600) == 0:
+        ambient.renew_forecast()
+    if (sec % 600) == 0:
+        ambient.renew_dust_measure()
 
-    while sec < 3600:
-        trig = False
-        while not trig:
-            time.sleep(0.025)
-            trig, hrs, sec = data_handler.timer(3) #timer triggers script execution in 3-second steps
-        print("Elapsed: {}hrs, {}sec, ".format(hrs,sec), end="")
-        outside_conditions = ambient.simulate()
-        for key in ["temp", "preci", "solar", "dust"]:
-            op_data[key] = outside_conditions[key]
+    trig = False
+    while not trig:
+        time.sleep(0.100)
+        trig, hrs, sec = data_handler.timer(3) #timer triggers script execution in 3-second steps
 
-        control_values = controls.read_json(["damp_cmd", "fans_stp", "pump_cmd", "clg_cmd", "htg_pos", "clg_pos"])
-        for key in control_values:
-            op_data[key] = control_values[key]
+    print("  Elapsed: {}hrs, {}sec, ".format(hrs,sec), end="")
+    outside_conditions = ambient.simulate()
+    for key in ["temp", "preci", "solar", "dust"]:
+        op_data[key] = outside_conditions[key]
 
-        internal_conditions = building.calculate(op_data["temp"], op_data["temp_sup"], op_data["damp_cmd"], op_data["fans_stp"])
-        print(internal_conditions)
-        for key in internal_conditions:
-            op_data[key] = internal_conditions[key]
+    control_values = controls.read_json(["damp_cmd", "fans_stp", "pump_cmd", "clg_cmd", "htg_pos", "clg_pos"])
+    for key in control_values:
+        op_data[key] = control_values[key]
 
-        model_values = controls.calculate(op_data["temp"], op_data["temp_room"], op_data["damp_cmd"],
-                                          op_data["fans_stp"], ["pump_cmd"], op_data["clg_cmd"],
-                                          op_data["htg_pos"], op_data["clg_pos"], op_data["htg_pwr"],
-                                          op_data["clg_pwr"])
-        print(model_values)
-        for key in model_values:
-            op_data[key] = model_values[key]
+    internal_conditions = building.calculate(op_data["temp"], op_data["temp_sup"], op_data["flow_sup"])
+    print(internal_conditions)
+    for key in internal_conditions:
+        op_data[key] = internal_conditions[key]
 
-        controls.write_json({"temp": op_data["temp"],
-                             "temp_sup": op_data["temp_sup"],
-                             "temp_room": op_data["temp_room"],
-                             "temp_extr": op_data["temp_room"]})
+    model_values = controls.calculate(op_data["temp"], op_data["temp_room"], op_data["damp_cmd"],
+                                      op_data["fans_stp"], op_data["flow_sup"], op_data["pump_cmd"], op_data["clg_cmd"],
+                                      op_data["htg_pos"], op_data["clg_pos"], op_data["htg_pwr"],
+                                      op_data["clg_pwr"])
+    print(model_values)
+    for key in model_values:
+        op_data[key] = model_values[key]
 
-        if (sec % 60) == 0:
-            data_handler.store_op_data(op_data)
-            data_handler.dump_to_file(op_data)
-            if "error" in op_data.keys():
-                op_data.pop("error")
+    controls.write_json({"temp": op_data["temp"],
+                         "temp_sup": op_data["temp_sup"],
+                         "temp_room": op_data["temp_room"],
+                         "temp_extr": op_data["temp_room"]})
+
+    if (sec % 60) == 0:
+        data_handler.store_op_data(op_data)
+        data_handler.dump_to_file(op_data)
+        if "error" in op_data.keys():
+            op_data.pop("error")
