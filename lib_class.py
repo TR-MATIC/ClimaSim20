@@ -483,12 +483,12 @@ class Climatix(object):
         else:
             flow_sup_demand = 0.0
         # then the air volume flow must follow the demand, but with appropriate inertia
-        if flow_sup < (flow_sup_demand - 200):
-            flow_sup = flow_sup + 100
+        if flow_sup < (flow_sup_demand - 100):
+            flow_sup = flow_sup + 50
         elif flow_sup <= (flow_sup_demand - 10):
             flow_sup = flow_sup + 10
-        elif flow_sup > (flow_sup_demand + 200):
-            flow_sup = flow_sup - 100
+        elif flow_sup > (flow_sup_demand + 100):
+            flow_sup = flow_sup - 50
         elif flow_sup >= (flow_sup_demand + 10):
             flow_sup = flow_sup - 10
         else:
