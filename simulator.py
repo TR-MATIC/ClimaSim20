@@ -6,20 +6,22 @@ import time
 # defs
 # Future plan: use database to store operating data, instead of using global variable.
 op_data= {
-    "temp": 5.0,
+    "temp": 10.0,
     "preci": 0.0,
     "solar": 0.0,
     "dust": 0.0,
-    "flow_sup": 1800.0,
-    "temp_sup": 25.0,
+    "flow_sup": 0.0,
+    "temp_sup": 20.0,
     "temp_room": 20.0,
-    "temp_constr": 10.0,
-    "temp_insul": 10.0,
-    "damp_cmd": True,
+    "temp_constr": 18.0,
+    "temp_insul": 16.0,
+    "damp_cmd": False,
     "fans_stp": 0.0,
-    "pump_cmd": True,
-    "htg_pos": 60.0,
-    "htg_pwr": 14.0
+    "pump_cmd": False,
+    "htg_pos": 0.0,
+    "htg_pwr": 0.0,
+    "clg_pos": 0.0,
+    "clg_pwr": 0.0
 }
 
 

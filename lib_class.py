@@ -60,7 +60,7 @@ class Ambient(object):
             coordinates = requests.get(
                 coordinates_url,
                 headers=self.__meteo_headers,
-                timeout=0.500)
+                timeout=0.750)
         except requests.Timeout:
             output = {"error": "get_co_tout"}
         except requests.ConnectionError:
@@ -90,7 +90,7 @@ class Ambient(object):
             date_entries = requests.get(
                 dates_url,
                 headers=self.__meteo_headers,
-                timeout=0.500)
+                timeout=0.750)
         except requests.Timeout:
             output = {"error": "get_da_tout"}
         except requests.ConnectionError:
@@ -136,7 +136,7 @@ class Ambient(object):
             response = requests.post(
                 self.data_point_url(field, level)["forecast"],
                 headers=self.__meteo_headers,
-                timeout=0.500)
+                timeout=0.750)
         except requests.Timeout:
             output = {"error": "get_fo_tout"}
         except requests.ConnectionError:
@@ -169,7 +169,7 @@ class Ambient(object):
     def renew_dust_measure(self):
         pm10_url = self.__config["gios_url"] + self.__config["pm10_id"]
         try:
-            dust_data = requests.get(pm10_url, timeout=0.500)
+            dust_data = requests.get(pm10_url, timeout=1.500)
         except requests.Timeout:
             output = {"error": "get_du_tout"}
         except requests.ConnectionError:
@@ -398,7 +398,7 @@ class Climatix(object):
                 self.__config["climatix_url"],
                 auth=self.climatix_auth(),
                 params=climatix_params,
-                timeout=0.500)
+                timeout=0.750)
         except requests.Timeout:
             output = {"error": "get_rd_tout"}
         except requests.ConnectionError:
@@ -434,7 +434,7 @@ class Climatix(object):
                 self.__config["climatix_url"],
                 auth=self.climatix_auth(),
                 params=self.climatix_params_w(ao_dict),
-                timeout=0.500)
+                timeout=0.750)
         except requests.Timeout:
             output = {"error": "get_wr_tout"}
         except requests.ConnectionError:
@@ -465,7 +465,7 @@ class Climatix(object):
         else:
             htg_pwr = 0.0
         # calculation of cooling power from the cooler
-        clg_pwr_demand = 40.0 * 1/100 * clg_pos
+        clg_pwr_demand = 20.0 * 1/100 * clg_pos
         if clg_cmd:
             if clg_pwr < (clg_pwr_demand - 1.0):
                 clg_pwr = clg_pwr + 0.2
