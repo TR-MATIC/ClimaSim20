@@ -498,6 +498,10 @@ class Climatix(object):
             temp_sup = temp_room
         else:
             temp_sup = temp + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
+        if temp_sup > 80.0:
+            temp_sup = 80.0
+        elif temp_sup < -20.0:
+            temp_sup = -20.0
         return {"flow_sup": flow_sup, "temp_sup": temp_sup, "htg_pwr": htg_pwr, "clg_pwr": clg_pwr}
 
 
