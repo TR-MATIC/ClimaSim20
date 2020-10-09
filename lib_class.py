@@ -438,7 +438,8 @@ class Climatix(object):
                 output = {"error": "get_wr_" + str(climatix_get.status_code)}
         return output
 
-    def calculate(self, temp, temp_room, damp_cmd, fans_stp, flow_sup, pump_cmd, clg_cmd, htg_pos, clg_pos, htg_pwr, clg_pwr):
+    def calculate(self, temp, temp_room, damp_cmd, fans_stp, flow_sup, pump_cmd, clg_cmd, htg_pos, clg_pos,
+                  htg_pwr, clg_pwr, dust, dust_depo):
         # calculation of heating power from the heater
         if pump_cmd:
             htg_pwr_demand = 22.0 * 1/100 * htg_pos
@@ -496,13 +497,15 @@ class Climatix(object):
         # finally, from htg the supply temperature is calculated
         if flow_sup == 0.0:
             temp_sup = temp_room
+            dust_depo = dust_depo
         else:
             temp_sup = temp + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
+            dust_depo = dust_depo + (1/100000000 * 2.2 * 3 * 4 * dust)
         if temp_sup > 80.0:
             temp_sup = 80.0
         elif temp_sup < -20.0:
             temp_sup = -20.0
-        return {"flow_sup": flow_sup, "temp_sup": temp_sup, "htg_pwr": htg_pwr, "clg_pwr": clg_pwr}
+        return {"flow_sup": flow_sup, "temp_sup": temp_sup, "htg_pwr": htg_pwr, "clg_pwr": clg_pwr, "dust_depo": dust_depo}
 
 
 class Handler(object):

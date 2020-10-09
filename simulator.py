@@ -78,7 +78,7 @@ while hrs < 168:
     model_values = controls.calculate(op_data["temp"], op_data["temp_room"], op_data["damp_cmd"],
                                       op_data["fans_stp"], op_data["flow_sup"], op_data["pump_cmd"], op_data["clg_cmd"],
                                       op_data["htg_pos"], op_data["clg_pos"], op_data["htg_pwr"],
-                                      op_data["clg_pwr"])
+                                      op_data["clg_pwr"], op_data["dust"], op_data["dust_depo"])
     print(model_values)
     for key in model_values:
         op_data[key] = model_values[key]
