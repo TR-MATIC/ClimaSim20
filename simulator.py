@@ -90,7 +90,9 @@ while hrs < 168:
     controls.write_json({"temp": op_data["temp"],
                          "temp_sup": op_data["temp_sup"],
                          "temp_room": op_data["temp_room"],
-                         "temp_extr": op_data["temp_room"]})
+                         "temp_extr": op_data["temp_room"],
+                         "filt_su_pres": op_data["filt_su_pres"],
+                         "filt_ex_pres": op_data["filt_ex_pres"]})
 
     if (sec % 60) == 0:
         data_handler.store_op_data(op_data)
