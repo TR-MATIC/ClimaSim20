@@ -1,5 +1,8 @@
 # packages
-from lib_class import Ambient, Building, Climatix, Handler
+from lib_class_Ambient import Ambient
+from lib_class_Building import Building
+from lib_class_Climatix import Climatix
+from lib_class_other import Handler
 import time
 
 
@@ -39,7 +42,8 @@ controls = Climatix()
 controls.load_config()
 controls.climatix_auth()
 # 1st time initialization, to start from good values, not from zeros
-control_values = controls.read_json(["damp_cmd", "fans_stp", "pump_cmd", "htg_pos", "temp", "temp_sup", "temp_room", "temp_extr"])
+control_values = controls.read_json(["damp_cmd", "fans_stp", "pump_cmd", "htg_pos",
+                                     "temp", "temp_sup", "temp_room", "temp_extr"])
 for key in control_values:
     op_data[key] = control_values[key]
 
