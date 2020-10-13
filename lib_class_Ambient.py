@@ -31,7 +31,7 @@ class Ambient(object):
         self.__temperature = {}
         self.__precipitation = {}
         self.__solar_radiation = {}
-        self.__dust_measure = {"times": [], "data": []}
+        self.__dust_measure = {}
         self.__current = {"temp": 0.0, "preci": 0.0, "solar": 0.0, "dust": 0.0}
 
     def load_config(self):
@@ -70,10 +70,10 @@ class Ambient(object):
             status = {"error": "get_coor_othr"}
         else:
             if coordinates.status_code == 200:
-                status = {"error": "get_coor_none"}
                 row = coordinates.json()["points"][0]["row"]
                 col = coordinates.json()["points"][0]["col"]
                 self.__meteo_coordinates = "{},{}".format(row, col)
+                status = {"error": "NONE"}
             else:
                 status = {"error": "get_coor_" + str(coordinates.status_code)}
         return status
@@ -135,11 +135,13 @@ class Ambient(object):
         return {"forecast": forecast_url, "info": info_url}
 
     def get_forecast(self, field, level):
+        output = {}
+        #output = {'times': [], 'data': []}
         try:
             response = requests.post(
                 self.data_point_url(field, level)["forecast"],
                 headers=self.__meteo_headers,
-                timeout=1.500)
+                timeout=1.000)
         except requests.Timeout:
             status = {"error": "get_fcst_tout"}
         except requests.ConnectionError:
@@ -152,7 +154,7 @@ class Ambient(object):
                 status = {"error": "NONE"}
             else:
                 status = {"error": "get_fcst_" + str(response.status_code)}
-        print(status, output)
+        print("{} ; {}".format(status, output))
         return output, status
 
     def renew_forecast(self):
@@ -178,11 +180,11 @@ class Ambient(object):
         try:
             dust_data = requests.get(pm10_url, timeout=1.500)
         except requests.Timeout:
-            output = {"error": "get_du_tout"}
+            status = {"error": "get_du_tout"}
         except requests.ConnectionError:
-            output = {"error": "get_du_conn"}
+            status = {"error": "get_du_conn"}
         except:
-            output = {"error": "get_du_othr"}
+            status = {"error": "get_du_othr"}
         else:
             if dust_data.status_code == 200:
                 self.__dust_measure = {"times": [], "data": []}
@@ -194,11 +196,11 @@ class Ambient(object):
                         dust_measure = 0.0
                     self.__dust_measure["times"].append(data["date"][0:16])
                     self.__dust_measure["data"].append(dust_measure)
-                output = {"error": "get_du_none"}
+                status = {"error": "NONE"}
             else:
-                output = {"error": "get_du_" + str(dust_data.status_code)}
-            print(self.__dust_measure)
-        return output
+                status = {"error": "get_du_" + str(dust_data.status_code)}
+        print("{} ; {}".format(status, self.__dust_measure))
+        return status
 
     def simulate(self):
         current_date = time.strftime("%Y-%m-%d")
@@ -249,16 +251,19 @@ class Ambient(object):
         # can be delayed for a quarter or so - and in this case API responds with 0.0 dust concentration ;)
         # And finally, this data is prepared in 1-hour slices - not in 6-hour slices. Funny, isn't it? ;)
         # Extrapolation algorithm must be smart enough to handle that.
-        dust_n0 = self.__dust_measure["data"][0]
-        dust_n1 = self.__dust_measure["data"][1]
-        dust_n2 = self.__dust_measure["data"][2]
-        dust_n3 = self.__dust_measure["data"][3]
-        if dust_n0 > 0.0:
-            self.__current["dust"] = 1/4 * (dust_n0 + dust_n1 + dust_n2 + dust_n3)
-        elif dust_n1 > 0.0:
-            self.__current["dust"] = 1/3 * (dust_n1 + dust_n2 + dust_n3)
-        elif dust_n2 > 0.0:
-            self.__current["dust"] = 1/2 * (dust_n2 + dust_n3)
+        if "times" in self.__dust_measure.keys():
+            dust_n0 = self.__dust_measure["data"][0]
+            dust_n1 = self.__dust_measure["data"][1]
+            dust_n2 = self.__dust_measure["data"][2]
+            dust_n3 = self.__dust_measure["data"][3]
+            if dust_n0 > 0.0:
+                self.__current["dust"] = 1/4 * (dust_n0 + dust_n1 + dust_n2 + dust_n3)
+            elif dust_n1 > 0.0:
+                self.__current["dust"] = 1/3 * (dust_n1 + dust_n2 + dust_n3)
+            elif dust_n2 > 0.0:
+                self.__current["dust"] = 1/2 * (dust_n2 + dust_n3)
+            elif dust_n3 > 0.0:
+                self.__current["dust"] = 1/1 * (dust_n3)
         else:
-            self.__current["dust"] = dust_n3
+            self.__current["dust"] = 0.0
         return self.__current
