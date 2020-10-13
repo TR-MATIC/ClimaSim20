@@ -60,7 +60,7 @@ class Ambient(object):
             coordinates = requests.get(
                 coordinates_url,
                 headers=self.__meteo_headers,
-                timeout=1.000)
+                timeout=1.500)
         except requests.Timeout:
             output = {"error": "get_co_tout"}
         except requests.ConnectionError:
@@ -90,7 +90,7 @@ class Ambient(object):
             date_entries = requests.get(
                 dates_url,
                 headers=self.__meteo_headers,
-                timeout=1.000)
+                timeout=1.500)
         except requests.Timeout:
             output = {"error": "get_da_tout"}
         except requests.ConnectionError:
@@ -136,7 +136,7 @@ class Ambient(object):
             response = requests.post(
                 self.data_point_url(field, level)["forecast"],
                 headers=self.__meteo_headers,
-                timeout=1.000)
+                timeout=1.500)
         except requests.Timeout:
             output = {"error": "get_fo_tout"}
         except requests.ConnectionError:
@@ -178,6 +178,7 @@ class Ambient(object):
             output = {"error": "get_du_othr"}
         else:
             if dust_data.status_code == 200:
+                self.__dust_measure = {"times": [], "data": []}
                 dust_record = dust_data.json()
                 for data in dust_record["values"]:
                     if data["value"] not in ["None", None]:
@@ -189,7 +190,7 @@ class Ambient(object):
                 output = {"error": "get_du_none"}
             else:
                 output = {"error": "get_du_" + str(dust_data.status_code)}
-            print(dust_record)
+            print(self.__dust_measure)
         return output
 
     def simulate(self):
@@ -241,17 +242,18 @@ class Ambient(object):
         # can be delayed for a quarter or so - and in this case API responds with 0.0 dust concentration ;)
         # And finally, this data is prepared in 1-hour slices - not in 6-hour slices. Funny, isn't it? ;)
         # Extrapolation algorithm must be smart enough to handle that.
-        elapsed_minutes = int(current_min)
         dust_n0 = self.__dust_measure["data"][0]
         dust_n1 = self.__dust_measure["data"][1]
         dust_n2 = self.__dust_measure["data"][2]
         dust_n3 = self.__dust_measure["data"][3]
         if dust_n0 > 0.0:
-            self.__current["dust"] = dust_n0 + 1/60 * elapsed_minutes * (dust_n0 - dust_n1)
+            self.__current["dust"] = 1/4 * (dust_n0 + dust_n1 + dust_n2 + dust_n3)
         elif dust_n1 > 0.0:
-            self.__current["dust"] = dust_n1 + 1/60 * (elapsed_minutes + 60) * (dust_n1 - dust_n2)
+            self.__current["dust"] = 1/3 * (dust_n1 + dust_n2 + dust_n3)
+        elif dust_n2 > 0.0:
+            self.__current["dust"] = 1/2 * (dust_n2 + dust_n3)
         else:
-            self.__current["dust"] = dust_n2 + 1/60 * (elapsed_minutes + 120) * (dust_n2 - dust_n3)
+            self.__current["dust"] = dust_n3
         return self.__current
 
 
@@ -418,7 +420,6 @@ class Climatix(object):
         return climatix_params
 
     def write_json(self, ao_dict: dict):
-        output = {}
         try:
             climatix_get = requests.get(
                 self.__config["climatix_url"],
