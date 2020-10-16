@@ -178,8 +178,8 @@ class Climatix(object):
         else:
             temp_sup = temp + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
             dust_depo = dust_depo + (1/100000000 * 2.2 * 3 * 4 * dust)
-            filt_su_pres = 100 + 1/100000 * (flow_sup ** 2) * dust_depo
-            filt_ex_pres = 100 + 1/100000 * (flow_sup ** 2) * dust_depo
+            filt_su_pres = 1/1000000 * (flow_sup ** 2) * (20 + 10 * dust_depo)
+            filt_ex_pres = 1/1000000 * (flow_sup ** 2) * (20 + 10 * dust_depo)
         if temp_sup > 60.0:
             temp_sup = 60.0
         elif temp_sup < -20.0:
