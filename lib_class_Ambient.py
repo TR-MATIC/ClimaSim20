@@ -106,6 +106,10 @@ class Ambient(object):
                 count = last_entry["count"]
                 interval = last_entry["interval"]
                 latest_valid_date = datetime.fromtimestamp(starting_date.timestamp() + (count - 1) * interval * 3600)
+                if latest_valid_date.strftime("%H") in ["05","11", "17", "23"]:
+                    latest_valid_date = datetime.fromtimestamp(latest_valid_date.timestamp() + 3600)
+                elif latest_valid_date.strftime("%H") in ["01", "07", "13", "19"]:
+                    latest_valid_date = datetime.fromtimestamp(latest_valid_date.timestamp() - 3600)
                 self.__meteo_date = latest_valid_date.strftime("%Y-%m-%dT%H")
                 status = {"error": "NONE"}
             else:
@@ -136,7 +140,6 @@ class Ambient(object):
 
     def get_forecast(self, field, level):
         output = {}
-        #output = {'times': [], 'data': []}
         try:
             response = requests.post(
                 self.data_point_url(field, level)["forecast"],
