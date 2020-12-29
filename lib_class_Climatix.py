@@ -117,7 +117,7 @@ class Climatix(object):
                   htg_pwr, clg_pwr, dust, dust_depo):
         # calculation of heating power from the heater
         if pump_cmd:
-            htg_pwr_demand = 22.0 * 1/100 * htg_pos
+            htg_pwr_demand = 30.0 * 1/100 * htg_pos
         else:
             htg_pwr_demand = 0.0
         if htg_pwr < (htg_pwr_demand - 1.0):
@@ -173,8 +173,8 @@ class Climatix(object):
         if flow_sup == 0.0:
             temp_sup = temp_room
             dust_depo = dust_depo
-            filt_su_pres = 5.0
-            filt_ex_pres = 5.0
+            filt_su_pres = 2.0
+            filt_ex_pres = 2.0
         else:
             temp_sup = temp + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
             dust_depo = dust_depo + (1/100000000 * 2.2 * 3 * 4 * dust)
