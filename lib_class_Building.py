@@ -54,13 +54,13 @@ class Building(object):
         if flow_sup > 0.0:
             coeff = flow_sup/2400.0
             self.__temp_room[1] = temp_rm + ((avg_rm * temp_sup + temp_con) / (avg_rm + 1) - temp_rm) * coeff * (ti_diff / tau_rm)
-            self.__temp_constr[1] = temp_con + ((avg_con * self.__temp_room[1] + temp_ins) / (avg_con + 1) - temp_con) * coeff * (ti_diff / tau_con)
-            self.__temp_insul[1] = temp_ins + ((avg_ins * self.__temp_constr[1] + temp) / (avg_ins + 1) - temp_ins) * coeff * (ti_diff / tau_ins)
+            self.__temp_constr[1] = temp_con + ((avg_con * self.__temp_room[1] + temp_ins) / (avg_con + 1) - temp_con) * 1 * (ti_diff / tau_con)
+            self.__temp_insul[1] = temp_ins + ((avg_ins * self.__temp_constr[1] + temp) / (avg_ins + 1) - temp_ins) * 1 * (ti_diff / tau_ins)
         else:
-            coeff = 0.2
+            coeff = 1
             self.__temp_room[1] = temp_rm + ((avg_rm * temp_sup + temp_con) / (avg_rm + 1) - temp_rm) * coeff * (ti_diff / tau_rm)
-            self.__temp_constr[1] = temp_con + ((avg_con * self.__temp_room[1] + temp_ins) / (avg_con + 1) - temp_con) * coeff * (ti_diff/tau_con)
-            self.__temp_insul[1] = temp_ins + ((avg_ins * self.__temp_constr[1] + temp) / (avg_ins + 1) - temp_ins) * coeff * (ti_diff/tau_ins)
+            self.__temp_constr[1] = temp_con + ((avg_con * self.__temp_room[1] + temp_ins) / (avg_con + 1) - temp_con) * 1 * (ti_diff/tau_con)
+            self.__temp_insul[1] = temp_ins + ((avg_ins * self.__temp_constr[1] + temp) / (avg_ins + 1) - temp_ins) * 1 * (ti_diff/tau_ins)
         # update storage
         self.__temp_room[0] = self.__temp_room[1]
         self.__temp_constr[0] = self.__temp_constr[1]
