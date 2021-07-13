@@ -144,7 +144,7 @@ class Ambient(object):
             response = requests.post(
                 self.data_point_url(field, level)["forecast"],
                 headers=self.__meteo_headers,
-                timeout=1.000)
+                timeout=2.000)
         except requests.Timeout:
             status = {"error": "get_fcst_tout"}
         except requests.ConnectionError:
