@@ -1,6 +1,6 @@
 # packages
-import requests
-from datetime import datetime
+# import requests
+# from datetime import datetime
 import time
 
 
@@ -64,14 +64,14 @@ class Handler(object):
 
     def dump_to_file(self, op_data: dict):
         report_file = open(self.__dump_file_path, mode="a")
-        line = "{} ; ".format(time.strftime("%H:%M"))
+        line = "{}".format(time.strftime("%Y.%m.%d %H:%M"))
         for key in op_data:
             if op_data[key] in (True, False):
-                line = line + "{}={}; ".format(key, op_data[key])
+                line = line + ";{}={}".format(key, op_data[key])
             elif key in ("error"):
-                line = line + "{}={}; ".format(key, op_data[key])
+                line = line + ";{}={}".format(key, op_data[key])
             else:
-                line = line + "{}={:.3f}; ".format(key, op_data[key])
+                line = line + ";{}={:.3f}".format(key, op_data[key])
         line = line + "\n"
         report_file.writelines(line)
         report_file.close()

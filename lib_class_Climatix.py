@@ -1,7 +1,7 @@
 # packages
 import requests
-from datetime import datetime
-import time
+# from datetime import datetime
+# import time
 
 
 # defs
@@ -27,10 +27,11 @@ class Climatix(object):
         # FrostAlm = BCIuUxoD
         # DampCmd = ByIaGBoD
         # PumpCmd = ByIYKBoD
+        # ClgCmd = ByIkKBoD
         # FanSuCmd = CCKoVRoD
-        # FanExCmd = CCJ / ORoD
+        # FanExCmd = CCJ/ORoD
         # HtgPos = BiJhZhoD
-        # ClgPos =
+        # ClgPos = BiLNeBoD
 
     def load_config(self):
         config_file = open(self.__config_path, mode="r")
@@ -87,8 +88,11 @@ class Climatix(object):
         climatix_params = {"fn": "write"}
         params_list = []
         for key in ao_dict:
-            params_list.append(self.__config[key] + self.__config["tracking_sel"] + ";" + "1")
-            params_list.append(self.__config[key] + self.__config["tracking_com_val"] + ";" + str(ao_dict[key]))
+            if ao_dict[key][1]:
+                params_list.append(self.__config[key] + self.__config["present_val"] + ";" + str(ao_dict[key][0]))
+            else:
+                params_list.append(self.__config[key] + self.__config["tracking_sel"] + ";" + "1")
+                params_list.append(self.__config[key] + self.__config["tracking_com_val"] + ";" + str(ao_dict[key][0]))
         climatix_params.update({"oa": params_list})
         climatix_params.update({"pin": self.__config["climatix_pin"]})
         return climatix_params
@@ -113,71 +117,70 @@ class Climatix(object):
                 output = {"error": "get_wr_" + str(climatix_get.status_code)}
         return output
 
-    def calculate(self, temp, temp_room, damp_cmd, fans_stp, flow_sup, pump_cmd, clg_cmd, htg_pos, clg_pos,
-                  htg_pwr, clg_pwr, dust, dust_depo):
+    def calculate(self, op_data: dict):
         # calculation of heating power from the heater
-        if pump_cmd:
-            htg_pwr_demand = 30.0 * 1/100 * htg_pos
+        if op_data["pump_cmd"]:
+            htg_pwr_demand = 30.0 * 1/100 * op_data["htg_pos"]
         else:
             htg_pwr_demand = 0.0
-        if htg_pwr < (htg_pwr_demand - 1.0):
-            htg_pwr = htg_pwr + 0.2
-        elif htg_pwr < (htg_pwr_demand - 0.1):
-            htg_pwr = htg_pwr + 0.05
-        elif htg_pwr > (htg_pwr_demand + 1.0):
-            htg_pwr = htg_pwr - 0.2
-        elif htg_pwr > (htg_pwr_demand + 0.1):
-            htg_pwr = htg_pwr - 0.05
+        if op_data["htg_pwr"] < (htg_pwr_demand - 1.0):
+            htg_pwr = op_data["htg_pwr"] + 0.5
+        elif op_data["htg_pwr"] < (htg_pwr_demand - 0.1):
+            htg_pwr = op_data["htg_pwr"] + 0.05
+        elif op_data["htg_pwr"] > (htg_pwr_demand + 1.0):
+            htg_pwr = op_data["htg_pwr"] - 0.5
+        elif op_data["htg_pwr"] > (htg_pwr_demand + 0.1):
+            htg_pwr = op_data["htg_pwr"] - 0.05
         else:
             htg_pwr = htg_pwr_demand
         # calculation of cooling power from the cooler
-        clg_pwr_demand = 20.0 * 1/100 * clg_pos
-        if clg_cmd:
-            if clg_pwr < (clg_pwr_demand - 1.0):
-                clg_pwr = clg_pwr + 0.2
-            elif clg_pwr < (clg_pwr_demand - 0.1):
-                clg_pwr = clg_pwr + 0.05
-            elif clg_pwr > (clg_pwr_demand + 1.0):
-                clg_pwr = clg_pwr - 0.2
-            elif clg_pwr > (clg_pwr_demand + 0.1):
-                clg_pwr = clg_pwr - 0.05
-            else:
-                clg_pwr = clg_pwr
+        if op_data["clg_cmd"]:
+            clg_pwr_demand = 20.0 * 1 / 100 * op_data["clg_pos"]
         else:
-            clg_pwr = 0.0
+            clg_pwr_demand = 0.0
+        if op_data["clg_pwr"] < (clg_pwr_demand - 1.0):
+            clg_pwr = op_data["clg_pwr"] + 0.5
+        elif op_data["clg_pwr"] < (clg_pwr_demand - 0.1):
+            clg_pwr = op_data["clg_pwr"] + 0.05
+        elif op_data["clg_pwr"] > (clg_pwr_demand + 1.0):
+            clg_pwr = op_data["clg_pwr"] - 0.5
+        elif op_data["clg_pwr"] > (clg_pwr_demand + 0.1):
+            clg_pwr = op_data["clg_pwr"] - 0.05
+        else:
+            clg_pwr = clg_pwr_demand
         # calculation of fan speed and corresponding air volume flow
         # the flow demand must be calculated first, according to damper opening and fan step
-        if damp_cmd:
-            if fans_stp == 0:
+        if op_data["damp_cmd"]:
+            if op_data["fans_stp"] == 0:
                 flow_sup_demand = 0.0
-            elif fans_stp == 1:
+            elif op_data["fans_stp"] == 1:
                 flow_sup_demand = 1600
-            elif fans_stp == 2:
+            elif op_data["fans_stp"] == 2:
                 flow_sup_demand = 2400
             else:
                 flow_sup_demand = 2400
         else:
             flow_sup_demand = 0.0
         # then the air volume flow must follow the demand, but with appropriate inertia
-        if flow_sup < (flow_sup_demand - 100):
-            flow_sup = flow_sup + 50
-        elif flow_sup <= (flow_sup_demand - 10):
-            flow_sup = flow_sup + 10
-        elif flow_sup > (flow_sup_demand + 100):
-            flow_sup = flow_sup - 50
-        elif flow_sup >= (flow_sup_demand + 10):
-            flow_sup = flow_sup - 10
+        if op_data["flow_sup"] < (flow_sup_demand - 100):
+            flow_sup = op_data["flow_sup"] + 50
+        elif op_data["flow_sup"] < (flow_sup_demand - 10):
+            flow_sup = op_data["flow_sup"] + 5
+        elif op_data["flow_sup"] > (flow_sup_demand + 100):
+            flow_sup = op_data["flow_sup"] - 50
+        elif op_data["flow_sup"] > (flow_sup_demand + 10):
+            flow_sup = op_data["flow_sup"] - 5
         else:
             flow_sup = flow_sup_demand
         # finally, from htg the supply temperature is calculated
         if flow_sup == 0.0:
-            temp_sup = temp_room
-            dust_depo = dust_depo
+            temp_sup = op_data["temp_room"]
+            dust_depo = op_data["dust_depo"]
             filt_su_pres = 2.0
             filt_ex_pres = 2.0
         else:
-            temp_sup = temp + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
-            dust_depo = dust_depo + (1/100000000 * 2.2 * 3 * 4 * dust)
+            temp_sup = op_data["temp"] + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
+            dust_depo = op_data["dust_depo"] + (1/100000000 * 2.2 * 3 * 4 * op_data["dust"])
             filt_su_pres = 1/1000000 * (flow_sup ** 2) * (20 + 10 * dust_depo)
             filt_ex_pres = 1/1000000 * (flow_sup ** 2) * (20 + 10 * dust_depo)
         if temp_sup > 60.0:

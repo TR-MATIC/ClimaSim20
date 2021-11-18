@@ -1,6 +1,6 @@
 # packages
-import requests
-from datetime import datetime
+# import requests
+# from datetime import datetime
 import time
 
 
@@ -16,7 +16,7 @@ class Building(object):
         # constr_tau = 36
         # insul_avg = 4
         # insul_tau = 2
-        # AVG - coefficient of averaging temperatures, TAU - time constant for 1st order intertia
+        # AVG - coefficient of averaging temperatures, TAU - time constant for 1st order inertia
         self.__temp_room = [temp_room, temp_room]
         self.__temp_constr = [temp_constr, temp_constr]
         self.__temp_insul = [temp_insul, temp_insul]
@@ -34,7 +34,7 @@ class Building(object):
             self.__config.update({key: value})
         return True
 
-    def calculate(self, temp, temp_sup, flow_sup):
+    def calculate(self, op_data: dict):
         # prepare data
         temp_rm = self.__temp_room[0]
         temp_con = self.__temp_constr[0]
@@ -51,25 +51,20 @@ class Building(object):
         print("ti_diff : {:1.5}".format(self.__curr_time - self.__last_time))
         self.__last_time = self.__curr_time
         # do calculations
-        if flow_sup > 0.0:
-            coeff = flow_sup/2400.0
-            self.__temp_room[1] = temp_rm + ((avg_rm * temp_sup + temp_con) / (avg_rm + 1) - temp_rm) * coeff * (ti_diff / tau_rm)
-            self.__temp_constr[1] = temp_con + ((avg_con * self.__temp_room[1] + temp_ins) / (avg_con + 1) - temp_con) * 1 * (ti_diff / tau_con)
-            self.__temp_insul[1] = temp_ins + ((avg_ins * self.__temp_constr[1] + temp) / (avg_ins + 1) - temp_ins) * 1 * (ti_diff / tau_ins)
+        if op_data["flow_sup"] > 0.0:
+            coeff = op_data["flow_sup"]/2400.0
         else:
-            coeff = 1
-            self.__temp_room[1] = temp_rm + ((avg_rm * temp_sup + temp_con) / (avg_rm + 1) - temp_rm) * coeff * (ti_diff / tau_rm)
-            self.__temp_constr[1] = temp_con + ((avg_con * self.__temp_room[1] + temp_ins) / (avg_con + 1) - temp_con) * 1 * (ti_diff/tau_con)
-            self.__temp_insul[1] = temp_ins + ((avg_ins * self.__temp_constr[1] + temp) / (avg_ins + 1) - temp_ins) * 1 * (ti_diff/tau_ins)
+            coeff = 1.0
+        self.__temp_room[1] = temp_rm + ((avg_rm * op_data["temp_sup"] + temp_con) / (avg_rm + 1) - temp_rm) * coeff * (ti_diff / tau_rm)
+        self.__temp_constr[1] = temp_con + ((avg_con * self.__temp_room[1] + temp_ins) / (avg_con + 1) - temp_con) * 1 * (ti_diff / tau_con)
+        self.__temp_insul[1] = temp_ins + ((avg_ins * self.__temp_constr[1] + op_data["temp"]) / (avg_ins + 1) - temp_ins) * 1 * (ti_diff / tau_ins)
         # update storage
         self.__temp_room[0] = self.__temp_room[1]
         self.__temp_constr[0] = self.__temp_constr[1]
         self.__temp_insul[0] = self.__temp_insul[1]
-        return {
-            "temp_room": self.__temp_room[1],
-            "temp_constr": self.__temp_constr[1],
-            "temp_insul": self.__temp_insul[1]
-        }
+        return {"temp_room": self.__temp_room[1],
+                "temp_constr": self.__temp_constr[1],
+                "temp_insul": self.__temp_insul[1]}
 
 
 # Extended model, with sophisticated modelling and calculations.
