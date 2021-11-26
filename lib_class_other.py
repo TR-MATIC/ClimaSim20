@@ -76,3 +76,16 @@ class Handler(object):
         report_file.writelines(line)
         report_file.close()
         return True
+
+
+def load_config(config_path: str) -> dict:
+    config_file = open(config_path, mode="r")
+    config_data = config_file.readlines()
+    config_file.close()
+    config = {}
+    for line in config_data:
+        marker = line.find("=")   # It finds the first occurence of "=" character
+        key = line[0:marker]   # What's before that marker, will become a key...
+        value = line[(marker + 1):].rstrip("\n")   # and what follows after, will be a value.
+        config.update({key: value})    # Finally, the "config" dictionary is updated with new entry.
+    return config

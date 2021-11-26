@@ -9,47 +9,53 @@ class Climatix(object):
     def __init__(self, config_path="climatix_data.txt"):
         self.__config_path = config_path
         self.__config = {}
-        # climatix_url / List of fields available/expected in TXT configuration.
-        # climatix_name
-        # climatix_pass
-        # climatix_pin
-        # present_val = AAE =
-        # tracking_sel = QDA =
-        # tracking_com_val = QzA =
-        # reliability_com = RDA =
-        # TOa = AyLizxoD
-        # TSu = AyJesBoD
-        # TRm = AyLj7BoD
-        # TEx = AyJgbhoD
-        # ApiAi1 = ACPNxBoD
-        # ApiAi2 = ACOu9BoD
-        # ApiAi3 = ACOP5BoD
-        # FrostAlm = BCIuUxoD
-        # DampCmd = ByIaGBoD
-        # PumpCmd = ByIYKBoD
-        # ClgCmd = ByIkKBoD
-        # FanSuCmd = CCKoVRoD
-        # FanExCmd = CCJ/ORoD
-        # HtgPos = BiJhZhoD
-        # ClgPos = BiLNeBoD
+        # This is the list of key:value pairs, that should be provided for correct operation of the script.
+        # The source is a TXT configuration file, by default named climatix_data.txt
+        # The names on the left are required exactly like given here. They will be used as dictionary keys and are
+        # referenced in the other parts of the code.
+        #
+        # climatix_url=http://.../jsongen.html   Note, this script uses JSONGEN interface.
+        # climatix_name=.....   Siemens login...
+        # climatix_pass=........!   and Siemens password, both are top-secret, you should already know it very well ;)
+        # climatix_pin=####   Four digit PIN, as for Siemens HMI device.
+        # present_val=AAE=   These are the "suffixes" of the BASE64 references, for example ________AAE=.
+        # tracking_sel=QDA=
+        # tracking_com_val=QzA=
+        # reliability_com=RDA=
+        # temp=AyLizxoD   These are the "bodies" of the BASE64 references, for example AyLizxoD____.
+        # temp_sup=AyJesBoD   They are combined together for sending appropriate control bits or tracking values
+        # temp_room=AyLj7BoD   or for the purpose of reading out the signals from the Climatix
+        # temp_extr=AyJgbhoD
+        # damp_cmd=ByIaGBoD
+        # fans_stp=CyN3bhoD
+        # pump_cmd=ByIYKBoD
+        # clg_cmd=ByIkKBoD
+        # fan_su_cmd=CCKoVRoD
+        # fan_ex_cmd=CCJ/ORoD
+        # htg_pos=BiJhZhoD
+        # clg_pos=BiLNeBoD
+        # filt_su_pres=AyIQnxoD
+        # filt_ex_pres=AyJ8NRoD
 
-    def load_config(self):
-        config_file = open(self.__config_path, mode="r")
-        config_data = config_file.readlines()
-        config_file.close()
-        for line in config_data:
-            marker = line.find("=")
-            key = line[0:marker]
-            value = line[(marker + 1):].rstrip("\n")
-            self.__config.update({key: value})
-        return True
+    @property
+    def config_path(self):
+        return self.__config_path
+
+    @property
+    def config(self):
+        return self.__config
+
+    @config.setter
+    def config(self, config: dict):
+        self.__config = config
 
     def climatix_auth(self):
         climatix_auth = (self.__config["climatix_name"], self.__config["climatix_pass"])
         return climatix_auth
 
-    def climatix_params_r(self, ao_list):
-        climatix_params = {"fn": "read"}
+    # This function prepares the content of request to JSONGEN interface.
+    def climatix_params_r(self, ao_list: list) -> dict:   # The input must be a list of keys from __config dictionary.
+        climatix_params = {"fn": "read"}   # Uses READ function.
         params_list = []
         for key in ao_list:
             params_list.append(self.__config[key] + self.__config["present_val"])
@@ -57,15 +63,16 @@ class Climatix(object):
         climatix_params.update({"pin": self.__config["climatix_pin"]})
         return climatix_params
 
-    def read_json(self, ao_list):
+    # This function performs the actual reading request to JSONGEN interface.
+    def read_json(self, ao_list: list) -> dict:   # The input ao_list is passed directly to...
         output = {}
-        climatix_params = self.climatix_params_r(ao_list)
+        climatix_params = self.climatix_params_r(ao_list)   # the function, which prepares the content of the request.
         try:
             climatix_get = requests.get(
                 self.__config["climatix_url"],
                 auth=self.climatix_auth(),
                 params=climatix_params,
-                timeout=0.750)
+                timeout=0.750)   # This is ordinary GET request. Usually Climatix responds quickly, but check timeouts.
         except requests.Timeout:
             output = {"error": "get_rd_tout"}
         except requests.ConnectionError:
@@ -82,10 +89,13 @@ class Climatix(object):
                         output.update({ao_list[cnt]: received[key]})
             else:
                 output = {"error": "get_rd_" + str(climatix_get.status_code)}
-        return output
+        return output   # When output is bad, it contains "error" key. This is recognized by other parts of the code
+                        # and the faulty data is ignored. Script can carry old, good values and stay alive for some
+                        # period of time. At least is't not crashing at single wrong response of the controller.
 
-    def climatix_params_w(self, ao_dict: dict):
-        climatix_params = {"fn": "write"}
+    # This function prepares the content of request to JSONGEN interface.
+    def climatix_params_w(self, ao_dict: dict) -> dict:   # The input must be a dict with keys from __config dictionary.
+        climatix_params = {"fn": "write"}   # Uses WRITE function.
         params_list = []
         for key in ao_dict:
             if ao_dict[key][1]:
@@ -97,13 +107,14 @@ class Climatix(object):
         climatix_params.update({"pin": self.__config["climatix_pin"]})
         return climatix_params
 
-    def write_json(self, ao_dict: dict):
+    # This function performs the actual writing request to JSONGEN interface.
+    def write_json(self, ao_dict: dict) -> dict:   # The input ao_dict is passed directly to...
         try:
             climatix_get = requests.get(
                 self.__config["climatix_url"],
                 auth=self.climatix_auth(),
-                params=self.climatix_params_w(ao_dict),
-                timeout=0.750)
+                params=self.climatix_params_w(ao_dict),   # the function, which prepares the content of the request.
+                timeout=0.750)   # This is ordinary GET request. Usually Climatix responds quickly, but check timeouts.
         except requests.Timeout:
             output = {"error": "get_wr_tout"}
         except requests.ConnectionError:
@@ -115,9 +126,11 @@ class Climatix(object):
                 output = climatix_get.json()
             else:
                 output = {"error": "get_wr_" + str(climatix_get.status_code)}
-        return output
+        return output   # When output is bad, it contains "error" key. This is recognized by other parts of the code
+                        # and the faulty data is ignored. Script can carry old, good values and stay alive for some
+                        # period of time. At least is't not crashing at single wrong response of the controller.
 
-    def calculate(self, op_data: dict):
+    def calculate(self, op_data: dict) -> dict:
         # calculation of heating power from the heater
         if op_data["pump_cmd"]:
             htg_pwr_demand = 30.0 * 1/100 * op_data["htg_pos"]

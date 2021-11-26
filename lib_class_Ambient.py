@@ -34,16 +34,17 @@ class Ambient(object):
         self.__dust_measure = {}
         self.__current = {"temp": 0.0, "preci": 0.0, "solar": 0.0, "dust": 0.0}
 
-    def load_config(self):
-        config_file = open(self.__config_path, mode="r")
-        config_data = config_file.readlines()
-        config_file.close()
-        for line in config_data:
-            marker = line.find("=")
-            key = line[0:marker]
-            value = line[(marker + 1):].rstrip("\n")
-            self.__config.update({key: value})
-        return True
+    @property
+    def config_path(self):
+        return self.__config_path
+
+    @property
+    def config(self):
+        return self.__config
+
+    @config.setter
+    def config(self, config: dict):
+        self.__config = config
 
     def create_meteo_headers(self):
         self.__meteo_headers.update({"Authorization": "Token {}".format(self.__config["meteo_api_key"])})

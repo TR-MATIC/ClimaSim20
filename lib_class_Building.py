@@ -23,16 +23,17 @@ class Building(object):
         self.__curr_time = time.time()
         self.__last_time = time.time()
 
-    def load_config(self):
-        config_file = open(self.__config_path, mode="r")
-        config_data = config_file.readlines()
-        config_file.close()
-        for line in config_data:
-            marker = line.find("=")
-            key = line[0:marker]
-            value = line[(marker + 1):].rstrip("\n")
-            self.__config.update({key: value})
-        return True
+    @property
+    def config_path(self):
+        return self.__config_path
+
+    @property
+    def config(self):
+        return self.__config
+
+    @config.setter
+    def config(self, config: dict):
+        self.__config = config
 
     def calculate(self, op_data: dict):
         # prepare data

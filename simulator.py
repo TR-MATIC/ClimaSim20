@@ -2,7 +2,7 @@
 from lib_class_Ambient import Ambient
 from lib_class_Building import Building
 from lib_class_Climatix import Climatix
-from lib_class_other import Handler
+from lib_class_other import Handler, load_config
 import time
 
 
@@ -35,12 +35,12 @@ op_data = {"temp": 10.0,
 
 # code
 ambient = Ambient()
-ambient.load_config()
+ambient.config = load_config(ambient.config_path)
 ambient.create_meteo_headers()
 ambient.get_coordinates()
 
 controls = Climatix()
-controls.load_config()
+controls.config = load_config(controls.config_path)
 controls.climatix_auth()
 # 1st time initialization, to start from good values, not from zeros
 control_values = controls.read_json(["damp_cmd",
@@ -64,7 +64,7 @@ op_data = data_handler.recover_op_data(op_data)
 hrs = sec = 0
 
 building = Building(op_data["temp_room"], op_data["temp_constr"], op_data["temp_insul"])
-building.load_config()
+building.config = load_config(building.config_path)
 
 while hrs < 168:
     if (sec % 3600) == 0:
