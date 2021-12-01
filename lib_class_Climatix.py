@@ -5,6 +5,20 @@ import requests
 
 
 # defs
+def follow_demand(demand: float, value: float, step=1.0) -> float:
+    if value < (demand - step):
+        value = value + step / 2
+    elif value < (demand - step / 10):
+        value = value + step / 20
+    elif value > (demand + step):
+        value = value - step / 2
+    elif value > (demand + step / 10):
+        value = value - step / 20
+    else:
+        value = demand
+    return value
+
+
 class Climatix(object):
     def __init__(self, config_path="climatix_data.txt"):
         self.__config_path = config_path
@@ -23,11 +37,10 @@ class Climatix(object):
         # tracking_com_val=QzA=
         # reliability_com=RDA=
         # temp=AyLizxoD   These are the "bodies" of the BASE64 references, for example AyLizxoD____.
-        # temp_sup=AyJesBoD   They are combined together for sending appropriate control bits or tracking values
-        # temp_room=AyLj7BoD   or for the purpose of reading out the signals from the Climatix
-        # temp_extr=AyJgbhoD
+        # temp_su=AyJesBoD   They are combined together for sending appropriate control bits or tracking values
+        # temp_rm=AyLj7BoD   or for the purpose of reading out the signals from the Climatix
+        # temp_ex=AyJgbhoD
         # damp_cmd=ByIaGBoD
-        # fans_stp=CyN3bhoD
         # pump_cmd=ByIYKBoD
         # clg_cmd=ByIkKBoD
         # fan_su_cmd=CCKoVRoD
@@ -126,79 +139,110 @@ class Climatix(object):
                 output = climatix_get.json()
             else:
                 output = {"error": "get_wr_" + str(climatix_get.status_code)}
-        return output   # When output is bad, it contains "error" key. This is recognized by other parts of the code
-                        # and the faulty data is ignored. Script can carry old, good values and stay alive for some
-                        # period of time. At least is't not crashing at single wrong response of the controller.
+        return output
+        # When output is bad, it contains "error" key. This is recognized by other parts of the code and the faulty
+        # data is ignored. Script can carry old, good values and stay alive for some period of time. At least is't not
+        # crashing at single wrong response of the controller.
 
     def calculate(self, op_data: dict) -> dict:
-        # calculation of heating power from the heater
-        if op_data["pump_cmd"]:
-            htg_pwr_demand = 30.0 * 1/100 * op_data["htg_pos"]
+        # CALCULATION OF FAN SPEED AND AIR VOLUME
+        # Fan flow should be delivered when (1) dampers are opened or (2) fan step is received or (3) fan analog output
+        # is activated. All those are managed when available.
+        global flow_sup_demand, hrec_pwr_demand
+        if "damp_cmd" in op_data.keys():
+            if op_data["damp_cmd"]:
+                if "fan_su_pos" in op_data.keys():
+                    flow_sup_demand = self.__config["ahu_vol"] * 1/100 * op_data["fan_su_pos"]
+                elif "fan_su_cmd" in op_data.keys():
+                    if op_data["fan_su_cmd"] == 0:
+                        flow_sup_demand = 0.0
+                    elif op_data["fan_su_cmd"] == 1:
+                        flow_sup_demand = self.__config["ahu_vol"] * 2/3
+                    elif op_data["fan_su_cmd"] == 2:
+                        flow_sup_demand = self.__config["ahu_vol"] * 3/3
+                else:
+                    flow_sup_demand = self.__config["ahu_vol"]
+            else:
+                flow_sup_demand = 0.0
+        else:
+            if "fan_su_pos" in op_data.keys():
+                flow_sup_demand = self.__config["ahu_vol"] * 1/100 * op_data["fan_su_pos"]
+            elif "fan_su_cmd" in op_data.keys():
+                if op_data["fan_su_cmd"] == 0:
+                    flow_sup_demand = 0.0
+                elif op_data["fan_su_cmd"] == 1:
+                    flow_sup_demand = self.__config["ahu_vol"] * 2/3
+                elif op_data["fan_su_cmd"] == 2:
+                    flow_sup_demand = self.__config["ahu_vol"] * 3/3
+            else:
+                flow_sup_demand = 0.0
+        # Well, actually we just calculated, what the flow_sup SHOULD BE but we don't apply that directly to air flow
+        # calculation. This would generate jumps and oscillations between this simulation script and controller's res-
+        # ponse. To solve this problem, this demand is gradually applied to volumetric flow parameter - it's simulation
+        # of fan's inertia without complex mechanics and fluid modelling.
+        flow_su = follow_demand(flow_sup_demand, op_data["flow_su"], 100.0)
+        flow_ex = flow_su
+
+        # CALCULATION OF HEATING POWER
+        # Heating power should be delivered when (1) the heater is available, (2) the valve is open (mandatory)
+        # and (3) the pump is running (optional).
+        if "htg_pos" in op_data.keys():
+            if "pump_cmd" in op_data.keys():
+                if op_data["pump_cmd"]:
+                    htg_pwr_demand = self.__config["ahu_htg"] * 1/100 * op_data["htg_pos"]
+                else:
+                    htg_pwr_demand = 0.0
+            else:
+                htg_pwr_demand = self.__config["ahu_htg"] * 1/100 * op_data["htg_pos"]
         else:
             htg_pwr_demand = 0.0
-        if op_data["htg_pwr"] < (htg_pwr_demand - 1.0):
-            htg_pwr = op_data["htg_pwr"] + 0.5
-        elif op_data["htg_pwr"] < (htg_pwr_demand - 0.1):
-            htg_pwr = op_data["htg_pwr"] + 0.05
-        elif op_data["htg_pwr"] > (htg_pwr_demand + 1.0):
-            htg_pwr = op_data["htg_pwr"] - 0.5
-        elif op_data["htg_pwr"] > (htg_pwr_demand + 0.1):
-            htg_pwr = op_data["htg_pwr"] - 0.05
-        else:
-            htg_pwr = htg_pwr_demand
-        # calculation of cooling power from the cooler
-        if op_data["clg_cmd"]:
-            clg_pwr_demand = 20.0 * 1 / 100 * op_data["clg_pos"]
+        # Then the heating power must follow the demand, but with appropriate inertia as previously.
+        htg_pwr = follow_demand(htg_pwr_demand, op_data["htg_pwr"])
+
+        # CALCULATION OF COOLING POWER
+        # Cooling power should be delivered when (1) the cooler is available, (2) the valve is open (mandatory)
+        # and (3) the pump is running (optional).
+        if "clg_pos" in op_data.keys():
+            if "clg_cmd" in op_data.keys():
+                if op_data["clg_cmd"]:
+                    clg_pwr_demand = self.__config["ahu_clg"] * 1/100 * op_data["clg_pos"]
+                else:
+                    clg_pwr_demand = 0.0
+            else:
+                clg_pwr_demand = self.__config["ahu_clg"] * 1/100 * op_data["clg_pos"]
         else:
             clg_pwr_demand = 0.0
-        if op_data["clg_pwr"] < (clg_pwr_demand - 1.0):
-            clg_pwr = op_data["clg_pwr"] + 0.5
-        elif op_data["clg_pwr"] < (clg_pwr_demand - 0.1):
-            clg_pwr = op_data["clg_pwr"] + 0.05
-        elif op_data["clg_pwr"] > (clg_pwr_demand + 1.0):
-            clg_pwr = op_data["clg_pwr"] - 0.5
-        elif op_data["clg_pwr"] > (clg_pwr_demand + 0.1):
-            clg_pwr = op_data["clg_pwr"] - 0.05
-        else:
-            clg_pwr = clg_pwr_demand
-        # calculation of fan speed and corresponding air volume flow
-        # the flow demand must be calculated first, according to damper opening and fan step
-        if op_data["damp_cmd"]:
-            if op_data["fans_stp"] == 0:
-                flow_sup_demand = 0.0
-            elif op_data["fans_stp"] == 1:
-                flow_sup_demand = 1600
-            elif op_data["fans_stp"] == 2:
-                flow_sup_demand = 2400
+        # As previously, the cooling demand is gradually applied to cooling power output.
+        clg_pwr = follow_demand(clg_pwr_demand, op_data["clg_pwr"])
+
+        # CALCULATION OF HEAT RECOVERY POWER
+        # HREC power should be delivered when (1) the heat recovery is available, (2) the control signal is applied
+        # and (3) relevant parameters are available: temp, temp_extr, air flow (all conditions are mandatory).
+        if "hrec_pos" in op_data.keys():
+            temp_diff = op_data["temp_ex"] - op_data["temp"]
+            if -2.0 < temp_diff < 2.0:
+                hrec_pwr_demand = 0.0
             else:
-                flow_sup_demand = 2400
+                hrec_pwr_demand = 0.79 * temp_diff * (flow_su / 3600 * 1.2 * 1005) / 1000 * 1/100 * op_data["hrec_pos"]
         else:
-            flow_sup_demand = 0.0
-        # then the air volume flow must follow the demand, but with appropriate inertia
-        if op_data["flow_sup"] < (flow_sup_demand - 100):
-            flow_sup = op_data["flow_sup"] + 50
-        elif op_data["flow_sup"] < (flow_sup_demand - 10):
-            flow_sup = op_data["flow_sup"] + 5
-        elif op_data["flow_sup"] > (flow_sup_demand + 100):
-            flow_sup = op_data["flow_sup"] - 50
-        elif op_data["flow_sup"] > (flow_sup_demand + 10):
-            flow_sup = op_data["flow_sup"] - 5
-        else:
-            flow_sup = flow_sup_demand
-        # finally, from htg the supply temperature is calculated
-        if flow_sup == 0.0:
-            temp_sup = op_data["temp_room"]
+            hrec_pwr_demand = 0.0
+        # As one could expect, demand must be gradually transformed into hrec power.
+        hrec_pwr = follow_demand(hrec_pwr_demand, op_data["hrec_pwr"])
+
+        # Finally, from flow and all heat/cool sources, the supply temperature is calculated
+        if flow_su == 0.0:
+            temp_su = op_data["temp_rm"]
             dust_depo = op_data["dust_depo"]
-            filt_su_pres = 2.0
-            filt_ex_pres = 2.0
+            filt_su_pres = 0.0
+            filt_ex_pres = 0.0
         else:
-            temp_sup = op_data["temp"] + (htg_pwr - clg_pwr) * 1000 / (flow_sup / 3600 * 1.2 * 1005)
+            temp_su = op_data["temp"] + (hrec_pwr + htg_pwr - clg_pwr) * 1000 / (flow_su / 3600 * 1.2 * 1005)
             dust_depo = op_data["dust_depo"] + (1/100000000 * 2.2 * 3 * 4 * op_data["dust"])
-            filt_su_pres = 1/1000000 * (flow_sup ** 2) * (20 + 10 * dust_depo)
-            filt_ex_pres = 1/1000000 * (flow_sup ** 2) * (20 + 10 * dust_depo)
-        if temp_sup > 60.0:
-            temp_sup = 60.0
-        elif temp_sup < -20.0:
-            temp_sup = -20.0
-        return {"flow_sup": flow_sup, "temp_sup": temp_sup, "htg_pwr": htg_pwr, "clg_pwr": clg_pwr,
-                "dust_depo": dust_depo, "filt_su_pres": filt_su_pres, "filt_ex_pres": filt_ex_pres}
+            filt_su_pres = 1/1000000 * (flow_su ** 2) * (20 + 10 * dust_depo)
+            filt_ex_pres = 1/1000000 * (flow_su ** 2) * (20 + 10 * dust_depo)
+        if temp_su > 60.0:
+            temp_su = 60.0
+        elif temp_su < -20.0:
+            temp_su = -20.0
+        return {"flow_su": flow_su, "flow_ex": flow_ex, "temp_su": temp_su, "hrec_pwr": hrec_pwr, "htg_pwr": htg_pwr,
+                "clg_pwr": clg_pwr, "dust_depo": dust_depo, "filt_su_pres": filt_su_pres, "filt_ex_pres": filt_ex_pres}

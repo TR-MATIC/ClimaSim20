@@ -85,7 +85,11 @@ def load_config(config_path: str) -> dict:
     config = {}
     for line in config_data:
         marker = line.find("=")   # It finds the first occurence of "=" character
-        key = line[0:marker]   # What's before that marker, will become a key...
-        value = line[(marker + 1):].rstrip("\n")   # and what follows after, will be a value.
+        key = line[0:marker]   # What's before that marker, will become a key and what follows after, will be a value.
+        # However, script must recognize if it's loading string or numerical value, hence additional condition.
+        if line[(marker + 1)] == "(":
+            value = float(line[(marker + 2):].rstrip(")\n"))
+        else:
+            value = line[(marker + 1):].rstrip("\n")
         config.update({key: value})    # Finally, the "config" dictionary is updated with new entry.
     return config
