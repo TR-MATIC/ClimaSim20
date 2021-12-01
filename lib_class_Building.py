@@ -49,7 +49,7 @@ class Building(object):
         # handle timing
         self.__curr_time = time.time()
         ti_diff = (self.__curr_time - self.__last_time) / 3600
-        print("ti_diff : {:1.5}".format(self.__curr_time - self.__last_time))
+        print("ti_diff : {:1.5} sec".format(self.__curr_time - self.__last_time))
         self.__last_time = self.__curr_time
         # do calculations
         if op_data["flow_su"] > 0.0:
@@ -66,7 +66,8 @@ class Building(object):
         return {"temp_rm": self.__temp_room[1],
                 "temp_con": self.__temp_constr[1],
                 "temp_ins": self.__temp_insul[1],
-                "temp_ex": self.__temp_room[1]}
+                "temp_ex": self.__temp_room[1],
+                "ti_diff": ti_diff}
 
 
 # Extended model, with sophisticated modelling and calculations.

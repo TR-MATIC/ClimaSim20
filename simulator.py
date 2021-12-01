@@ -12,6 +12,7 @@ op_data = {"temp": 10.0,
            "preci": 0.0,
            "solar": 0.0,
            "dust": 0.0,
+           "ti_diff": 0.0,
            "temp_su": 20.0,
            "temp_rm": 20.0,
            "temp_con": 18.0,
@@ -81,7 +82,7 @@ while hrs < 168:
     trig = False
     while not trig:
         time.sleep(0.100)
-        trig, hrs, sec = data_handler.timer(3)  # timer triggers script execution in 3-second steps
+        trig, hrs, sec = data_handler.timer(3)  # Timer triggers script execution in adjustable steps, 3s for example.
 
     print("  Elapsed: {}hrs, {}sec, ".format(hrs, sec), end="")
     outside_conditions = ambient.simulate()
@@ -89,15 +90,15 @@ while hrs < 168:
         op_data[key] = outside_conditions[key]
 
     control_values = controls.read_json(["damp_cmd",
-                                     "fan_su_cmd",
-                                     "fan_su_pos",
-                                     "fan_ex_cmd",
-                                     "fan_ex_pos",
-                                     "hrec_pos",
-                                     "pump_cmd",
-                                     "htg_pos",
-                                     "clg_cmd",
-                                     "clg_pos"])
+                                         "fan_su_cmd",
+                                         "fan_su_pos",
+                                         "fan_ex_cmd",
+                                         "fan_ex_pos",
+                                         "hrec_pos",
+                                         "pump_cmd",
+                                         "htg_pos",
+                                         "clg_cmd",
+                                         "clg_pos"])
     for key in control_values:
         op_data[key] = control_values[key]
 

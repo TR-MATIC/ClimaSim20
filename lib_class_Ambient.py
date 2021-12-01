@@ -179,6 +179,15 @@ class Ambient(object):
             self.__solar_radiation = solar_radiation_forecast
         return True
 
+    # "id":736,"stationName":"Gdańsk, ul. Leczkowa","gegrLat":"54.380279","gegrLon":"18.620274"
+    #   "id":4761,"paramName":"pył zawieszony PM10"
+    #   "id":4762,"paramName":"pył zawieszony PM2.5"
+    # "id":731,"stationName":"Gdańsk, ul. Wyzwolenia","gegrLat":"54.400833","gegrLon":"18.657497"
+    #   "id":4706,"paramName":"pył zawieszony PM10"
+    #   "id":27667,"paramName":"pył zawieszony PM2.5"
+    # "id":729,"stationName":"Gdańsk, ul. Powstańców Warszawskich","gegrLat":"54.353336","gegrLon":"18.635283"
+    #   "id":4681,"paramName":"pył zawieszony PM10"
+    # Given PM2.5 and PM10 values are micrograms per cubic meter ug/m3.
     def renew_dust_measure(self):
         pm10_url = self.__config["gios_url"] + self.__config["pm10_id"]
         try:

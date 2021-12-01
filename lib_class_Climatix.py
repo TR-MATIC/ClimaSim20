@@ -19,6 +19,33 @@ def follow_demand(demand: float, value: float, step=1.0) -> float:
     return value
 
 
+def dust_increase(dust: float, flow: float, time: float) -> float:
+    # Assumptions:
+    # PM2.5 or PM10 measure refers to specific fraction of total dust in the air, approx. 1/3 of total.
+    # They are given in micrograms per cubic meter.
+    # Typical filters can catch up to 80% of contaminants.
+    # Deposit is calculated in grams. Total mass of debris accumulated by the filter.
+    deposit = 1/1000000 * 0.8 * 3 * dust * flow * time
+    #             /       /      \                  \
+    #            /       /        \                  \
+    #     convert       /      extrapolate         script's
+    #     to grams     /      all fractions        ti_diff
+    #             filtering
+    #             efficiency
+    return deposit
+
+
+def filter_curve(dust_deposit: float, air_speed: float) -> float:
+    # Calculation of delta-p component that comes from the fabric.
+    fabric_dp = 20 * (1/3 * air_speed ** 2 + air_speed)
+    # Calculation of delta-p component that comes from the dust deposit.
+    coeff = 0.2  # This coefficient adjusts how the dust deposit impacts the pressure drop.
+    dust_dp = coeff * dust_deposit * (1/3 * air_speed ** 2 + air_speed)
+    # Final pressure drop is a sum of those two.
+    final_dp = fabric_dp + dust_dp
+    return final_dp
+
+
 class Climatix(object):
     def __init__(self, config_path="climatix_data.txt"):
         self.__config_path = config_path
@@ -182,6 +209,9 @@ class Climatix(object):
         # of fan's inertia without complex mechanics and fluid modelling.
         flow_su = follow_demand(flow_sup_demand, op_data["flow_su"], 100.0)
         flow_ex = flow_su
+        # Additionally, air velocity in the AHU is calculated. It's proportional to flow values.
+        speed_su = self.__config["ahu_spd"] * flow_su / self.__config["ahu_vol"]
+        speed_ex = self.__config["ahu_spd"] * flow_ex / self.__config["ahu_vol"]
 
         # CALCULATION OF HEATING POWER
         # Heating power should be delivered when (1) the heater is available, (2) the valve is open (mandatory)
@@ -229,20 +259,29 @@ class Climatix(object):
         # As one could expect, demand must be gradually transformed into hrec power.
         hrec_pwr = follow_demand(hrec_pwr_demand, op_data["hrec_pwr"])
 
-        # Finally, from flow and all heat/cool sources, the supply temperature is calculated
+        # Finally, from flow and all heat/cool sources, the output AHU parameters are calculated.
         if flow_su == 0.0:
             temp_su = op_data["temp_rm"]
-            dust_depo = op_data["dust_depo"]
-            filt_su_pres = 0.0
-            filt_ex_pres = 0.0
         else:
             temp_su = op_data["temp"] + (hrec_pwr + htg_pwr - clg_pwr) * 1000 / (flow_su / 3600 * 1.2 * 1005)
-            dust_depo = op_data["dust_depo"] + (1/100000000 * 2.2 * 3 * 4 * op_data["dust"])
-            filt_su_pres = 1/1000000 * (flow_su ** 2) * (20 + 10 * dust_depo)
-            filt_ex_pres = 1/1000000 * (flow_su ** 2) * (20 + 10 * dust_depo)
-        if temp_su > 60.0:
-            temp_su = 60.0
-        elif temp_su < -20.0:
-            temp_su = -20.0
+        # And in case of extreme values, which can occur in transient conditions, temp_su is limited to
+        # relevant range
+        if temp_su > 50.0:
+            temp_su = 50.0
+        elif temp_su < -25.0:
+            temp_su = -25.0
+
+        # CALCULATION OF DUST DEPOSIT AND RESULTING FILTER PRESSURE DROP
+        # Dust deposit is simple accumulation, depending on dust measures from API and air flow in the AHU.
+        dust_depo = op_data["dust_depo"] + dust_increase(op_data["dust"], op_data["flow_su"], op_data["ti_diff"])
+        # Filter pressure drop is described as f(x) ~ ⅓ξx²+ξx where x is air velocity in the filter fabrics and
+        # ξ is local drag coefficient, proportional (but non-linear...?) to dust deposit.
+        # Filter window can be ~15% narrower than the full AHU area - due to construction that supports filter pads.
+        # Bag filters can have 7 times bigger area than AHU's cross section - thus reducing air velocity in fabrics.
+        # At 7600m3/h air flow and 3x 20ug/m3 dust concentration, AHU filter catches around 0.5 grams of dust per hour.
+        # 0.5 g/h >> 5.0g/day >> 100g/month >> 300g/quarter and then filters need replacement.
+        # Note: not only debris causes the air flow resistance - the fabric of clean filter does it too.
+        filt_su_pres = filter_curve(dust_depo, speed_su)
+        filt_ex_pres = filter_curve(dust_depo, speed_ex)
         return {"flow_su": flow_su, "flow_ex": flow_ex, "temp_su": temp_su, "hrec_pwr": hrec_pwr, "htg_pwr": htg_pwr,
                 "clg_pwr": clg_pwr, "dust_depo": dust_depo, "filt_su_pres": filt_su_pres, "filt_ex_pres": filt_ex_pres}
