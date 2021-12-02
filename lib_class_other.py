@@ -87,6 +87,8 @@ def load_config(config_path: str) -> dict:
         marker = line.find("=")   # It finds the first occurence of "=" character
         key = line[0:marker]   # What's before that marker, will become a key and what follows after, will be a value.
         # However, script must recognize if it's loading string or numerical value, hence additional condition.
+        # In general, config files contain values considered as "string" type. If the value is given (in brackets),
+        # it's considered a number and converted to "float" by the time of uploading operation.
         if line[(marker + 1)] == "(":
             value = float(line[(marker + 2):].rstrip(")\n"))
         else:

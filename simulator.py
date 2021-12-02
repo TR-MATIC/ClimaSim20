@@ -18,6 +18,7 @@ op_data = {"temp": 10.0,
            "temp_con": 18.0,
            "temp_ins": 16.0,
            "temp_ex": 20.0,
+           "temp_eh": 5.5,
            "damp_cmd": True,
            "flow_su": 0.0,
            "flow_ex": 0.0,
@@ -29,7 +30,10 @@ op_data = {"temp": 10.0,
            "clg_cmd": True,
            "clg_pos": 0.0,
            "clg_pwr": 0.0,
-           "dust_depo": 0.0}
+           "dust_depo": 0.0,
+           "filt_su_pres": 1.1,
+           "filt_ex_pres": 1.2,
+           "air_q": 456.0}
 
 
 # const
@@ -115,8 +119,13 @@ while hrs < 168:
     controls.write_json({"temp": [op_data["temp"], False],
                          "temp_su": [op_data["temp_su"], False],
                          "temp_rm": [op_data["temp_rm"], False],
+                         "temp_ex": [op_data["temp_ex"], False],
+                         "temp_eh": [op_data["temp_eh"], False],
                          "flow_su": [op_data["flow_su"], False],
-                         "flow_ex": [op_data["flow_ex"], False]})
+                         "flow_ex": [op_data["flow_ex"], False],
+                         "filt_su_pres": [op_data["filt_su_pres"], False],
+                         "filt_ex_pres": [op_data["filt_ex_pres"], False],
+                         "air_q": [op_data["air_q"], False]})
 
     if (sec % 60) == 0:
         data_handler.store_op_data(op_data)
