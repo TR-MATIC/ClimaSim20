@@ -258,6 +258,17 @@ class Climatix(object):
             hrec_pwr_demand = 0.0
         # As one could expect, demand must be gradually transformed into hrec power.
         hrec_pwr = follow_demand(hrec_pwr_demand, op_data["hrec_pwr"])
+        # HREC operation takes energy from extract air and alters exhaust temperature. This is calculated here.
+        if flow_ex == 0.0:
+            temp_eh = op_data["temp_eh"]
+        else:
+            temp_eh = op_data["temp_ex"] - 1/0.79 * hrec_pwr * 1000 / (flow_ex / 3600 * 1.2 *1005)
+        # And in case of extreme values, which can occur in transient conditions, temp_su is limited to
+        # relevant range
+        if temp_eh > 50.0:
+            temp_eh = 50.0
+        elif temp_eh < -25.0:
+            temp_eh = -25.0
 
         # Finally, from flow and all heat/cool sources, the output AHU parameters are calculated.
         if flow_su == 0.0:
@@ -283,5 +294,5 @@ class Climatix(object):
         # Note: not only debris causes the air flow resistance - the fabric of clean filter does it too.
         filt_su_pres = filter_curve(dust_depo, speed_su)
         filt_ex_pres = filter_curve(dust_depo, speed_ex)
-        return {"flow_su": flow_su, "flow_ex": flow_ex, "temp_su": temp_su, "hrec_pwr": hrec_pwr, "htg_pwr": htg_pwr,
+        return {"flow_su": flow_su, "flow_ex": flow_ex, "temp_su": temp_su, "temp_eh": temp_eh, "hrec_pwr": hrec_pwr, "htg_pwr": htg_pwr,
                 "clg_pwr": clg_pwr, "dust_depo": dust_depo, "filt_su_pres": filt_su_pres, "filt_ex_pres": filt_ex_pres}
