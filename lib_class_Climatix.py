@@ -248,12 +248,14 @@ class Climatix(object):
         # CALCULATION OF HEAT RECOVERY POWER
         # HREC power should be delivered when (1) the heat recovery is available, (2) the control signal is applied
         # and (3) relevant parameters are available: temp, temp_extr, air flow (all conditions are mandatory).
+        hrec_eff = self.__config["hrec_eff"]
         if "hrec_pos" in op_data.keys():
             temp_diff = op_data["temp_ex"] - op_data["temp"]
             if -2.0 < temp_diff < 2.0:
                 hrec_pwr_demand = 0.0
             else:
-                hrec_pwr_demand = 0.79 * temp_diff * (flow_su / 3600 * 1.2 * 1005) / 1000 * 1/100 * op_data["hrec_pos"]
+                hrec_pwr_demand = hrec_eff * temp_diff * (flow_su / 3600 * 1.2 * 1005) / 1000 * 1/100 * op_data["hrec_pos"]
+                # The parameter here  ^  is efficiency, which must be included in power and temperature calculations.
         else:
             hrec_pwr_demand = 0.0
         # As one could expect, demand must be gradually transformed into hrec power.
@@ -262,8 +264,10 @@ class Climatix(object):
         if flow_ex == 0.0:
             temp_eh = op_data["temp_eh"]
         else:
-            temp_eh = op_data["temp_ex"] - 1/0.79 * hrec_pwr * 1000 / (flow_ex / 3600 * 1.2 *1005)
-        # And in case of extreme values, which can occur in transient conditions, temp_su is limited to
+            temp_eh = op_data["temp_ex"] - 0.95 / hrec_eff * hrec_pwr * 1000 / (flow_ex / 3600 * 1.2 *1005)
+            # Note this tricky calculation  ^  where theoretically 1/hrec_eff should be applied, but this would result
+            # in exhaust air having exactly the same temperature as outside air, which is not possible in reality.
+        # And in case of extreme values, which can occur in transient conditions, temp_eh is limited to
         # relevant range
         if temp_eh > 50.0:
             temp_eh = 50.0
@@ -294,5 +298,6 @@ class Climatix(object):
         # Note: not only debris causes the air flow resistance - the fabric of clean filter does it too.
         filt_su_pres = filter_curve(dust_depo, speed_su)
         filt_ex_pres = filter_curve(dust_depo, speed_ex)
-        return {"flow_su": flow_su, "flow_ex": flow_ex, "temp_su": temp_su, "temp_eh": temp_eh, "hrec_pwr": hrec_pwr, "htg_pwr": htg_pwr,
-                "clg_pwr": clg_pwr, "dust_depo": dust_depo, "filt_su_pres": filt_su_pres, "filt_ex_pres": filt_ex_pres}
+        return {"flow_su": flow_su, "flow_ex": flow_ex, "temp_su": temp_su, "temp_eh": temp_eh, "hrec_pwr": hrec_pwr,
+                "htg_pwr": htg_pwr, "clg_pwr": clg_pwr, "dust_depo": dust_depo, "filt_su_pres": filt_su_pres,
+                "filt_ex_pres": filt_ex_pres}
