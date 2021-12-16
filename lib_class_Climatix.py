@@ -248,14 +248,13 @@ class Climatix(object):
         # CALCULATION OF HEAT RECOVERY POWER
         # HREC power should be delivered when (1) the heat recovery is available, (2) the control signal is applied
         # and (3) relevant parameters are available: temp, temp_extr, air flow (all conditions are mandatory).
-        hrec_eff = self.__config["hrec_eff"]
         if "hrec_pos" in op_data.keys():
             temp_diff = op_data["temp_ex"] - op_data["temp"]
             if -2.0 < temp_diff < 2.0:
                 hrec_pwr_demand = 0.0
             else:
-                hrec_pwr_demand = hrec_eff * temp_diff * (flow_su / 3600 * 1.2 * 1005) / 1000 * 1/100 * op_data["hrec_pos"]
-                # The parameter here  ^  is efficiency, which must be included in power and temperature calculations.
+                hrec_pwr_demand = self.__config["hrec_eff"] * temp_diff *\
+                                  (flow_su / 3600 * 1.2 * 1005) / 1000 * 1/100 * op_data["hrec_pos"]
         else:
             hrec_pwr_demand = 0.0
         # As one could expect, demand must be gradually transformed into hrec power.
@@ -264,9 +263,7 @@ class Climatix(object):
         if flow_ex == 0.0:
             temp_eh = op_data["temp_eh"]
         else:
-            temp_eh = op_data["temp_ex"] - 0.95 / hrec_eff * hrec_pwr * 1000 / (flow_ex / 3600 * 1.2 *1005)
-            # Note this tricky calculation  ^  where theoretically 1/hrec_eff should be applied, but this would result
-            # in exhaust air having exactly the same temperature as outside air, which is not possible in reality.
+            temp_eh = op_data["temp_ex"] - hrec_pwr * 1000 / (flow_ex / 3600 * 1.2 *1005)
         # And in case of extreme values, which can occur in transient conditions, temp_eh is limited to
         # relevant range
         if temp_eh > 50.0:
