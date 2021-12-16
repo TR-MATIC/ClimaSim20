@@ -175,7 +175,7 @@ class Climatix(object):
         # CALCULATION OF FAN SPEED AND AIR VOLUME
         # Fan flow should be delivered when (1) dampers are opened or (2) fan step is received or (3) fan analog output
         # is activated. All those are managed when available.
-        global flow_sup_demand, hrec_pwr_demand
+        flow_sup_demand = 0.0
         if "damp_cmd" in op_data.keys():
             if op_data["damp_cmd"]:
                 if "fan_su_pos" in op_data.keys():
@@ -263,7 +263,7 @@ class Climatix(object):
         if flow_ex == 0.0:
             temp_eh = op_data["temp_eh"]
         else:
-            temp_eh = op_data["temp_ex"] - hrec_pwr * 1000 / (flow_ex / 3600 * 1.2 *1005)
+            temp_eh = op_data["temp_ex"] - hrec_pwr * 1000 / (flow_ex / 3600 * 1.2 * 1005)
         # And in case of extreme values, which can occur in transient conditions, temp_eh is limited to
         # relevant range
         if temp_eh > 50.0:

@@ -70,14 +70,18 @@ class Building(object):
                 "ti_diff": ti_diff}
 
 
+# Static methods, supporting the extended building model.
+def transfer_efficiency(delta_t: float, coeff=1.028) -> float:
+    output = 1.0 - coeff ** (-1.0 * (delta_t ** 2))
+    return output
+
+
 # Extended model, with sophisticated modelling and calculations.
 class BuildingEx(object):
     def __init__(self, config_path="buildingex_data.txt"):
         self.__config_path = config_path
         self.__config = {}
         self.__params = {}
-        self.__curr_time = time.time()
-        self.__last_time = time.time()
 
     @property
     def config_path(self):
@@ -99,36 +103,57 @@ class BuildingEx(object):
     def params(self, params: dict):
         self.__params = params
 
-    def initialize_params(self):
+    def initialize_params(self) -> dict:
+        # These are constant parameters which characterize the building
         wall_area = 2 * (self.__config["building_D"] + self.__config["building_L"]) * self.__config["building_H"]
-        wall_volume = wall_area * self.__config["concr_thickness"]
-        wall_mass = wall_volume * self.__config["concr_density"]
-        wall_conductance = wall_area * self.__config["concr_lambda"] / self.__config["concr_thickness"]
-        wall_heating_energy = wall_mass * self.__config["concr_spec_heat"]
+        wall_volume = wall_area * self.__config["concrete_thickness"]
+        wall_mass = wall_volume * self.__config["concrete_density"]
+        wall_conductance = wall_area * self.__config["concrete_lambda"] / self.__config["concrete_thickness"]
+        wall_heatup_energy = wall_mass * self.__config["concrete_spec_heat"]
         window_area = self.__config["glass_ratio"] * self.__config["building_L"] * self.__config["building_H"]
         window_spec_power = window_area * self.__config["glass_capture"]
         air_volume = self.__config["building_D"] * self.__config["building_L"] * self.__config["building_H"]
         air_mass = air_volume * self.__config["air_density"]
         air_conductance = wall_area * self.__config["air_lambda"] / self.config["air_thickness"]
-        air_heating_energy = air_mass * self.__config["air_spec_heat"]
-        insulation_volume = wall_area * self.__config["styro_thickness"]
-        insulation_mass = insulation_volume * self.__config["styro_density"]
-        insulation_conductance = wall_area * self.__config["styro_lambda"] / self.__config["styro_thickness"]
-        insulation_heating_energy = insulation_mass * self.__config["styro_spec_heat"]
-        return {"wall_A": wall_area,
-                "wall_V": wall_volume,
-                "wall_M": wall_mass,
-                "wall_C": wall_conductance,
-                "wall_HE": wall_heating_energy,
-                "window_A": window_area,
-                "window_SP": window_spec_power,
-                "air_A": wall_area,
-                "air_V": air_volume,
-                "air_M": air_mass,
-                "air_C": air_conductance,
-                "air_HE": air_heating_energy,
-                "insu_A": wall_area,
-                "insu_V": insulation_volume,
-                "insu_M": insulation_mass,
-                "insu_C": insulation_conductance,
-                "insu_HE": insulation_heating_energy}
+        air_heatup_energy = air_mass * self.__config["air_spec_heat"]
+        insulation_volume = wall_area * self.__config["styrofoam_thickness"]
+        insulation_mass = insulation_volume * self.__config["styrofoam_density"]
+        insulation_conductance = wall_area * self.__config["styrofoam_lambda"] / self.__config["styrofoam_thickness"]
+        insulation_heatup_energy = insulation_mass * self.__config["styrofoam_spec_heat"]
+        # These are initial values of process parameters of the building
+        air_accumulated_energy = self.__config["air_qacc"]
+        wall_accumulated_energy = self.__config["wall_qacc"]
+        insulation_accumulated_energy = self.__config["insulation_qacc"]
+        # These are constants stored internally in the building object
+        self.__params["wall_C"] = wall_conductance
+        self.__params["wall_HE"] = wall_heatup_energy
+        self.__params["window_SP"] = window_spec_power
+        self.__params["air_C"] = air_conductance
+        self.__params["air_HE"] = air_heatup_energy
+        self.__params["ins_C"] = insulation_conductance
+        self.__params["ins_HE"] = insulation_heatup_energy
+        # These are initial values which are output to op_mode storage outside the building object
+        return {"wall_AQ": wall_accumulated_energy,
+                "air_AQ": air_accumulated_energy,
+                "ins_AQ": insulation_accumulated_energy}
+
+    def power_delivery(self, op_data: dict) -> float:
+        temp_delta = op_data["temp_su"] - op_data["temp_rm"]
+        power = transfer_efficiency(temp_delta) * temp_delta * \
+                self.__config["air_spec_heat"] * self.__config["air_density"] * 1/3600 * op_data["flow_su"] + \
+                self.__params["window_SP"] * op_data["solar"]
+        return power
+
+    def calculate_layer(self, layer_name: str, op_data: dict, power_source: float, temp_sink: float) -> dict:
+        key_c = layer_name + "_C"
+        key_he = layer_name + "_HE"
+        key_aq = layer_name + "_AQ"
+        key_pb = layer_name + "_PB"
+        accumulated_energy = op_data[key_aq] + 0.0036 * op_data[key_pb] * op_data["ti_diff"]
+        temp_layer = 1000000 * accumulated_energy / self.__params[key_he] - 273.15
+        power_sink = (temp_layer - temp_sink) * self.__params[key_c]
+        power_balance = power_source - power_sink
+        return {"AQ": accumulated_energy,
+                "PB": power_balance,
+                "power_sink": power_sink,
+                "temperature": temp_layer}

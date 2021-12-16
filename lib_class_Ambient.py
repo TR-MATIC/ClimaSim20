@@ -107,7 +107,7 @@ class Ambient(object):
                 count = last_entry["count"]
                 interval = last_entry["interval"]
                 latest_valid_date = datetime.fromtimestamp(starting_date.timestamp() + (count - 1) * interval * 3600)
-                if latest_valid_date.strftime("%H") in ["05","11", "17", "23"]:
+                if latest_valid_date.strftime("%H") in ["05", "11", "17", "23"]:
                     latest_valid_date = datetime.fromtimestamp(latest_valid_date.timestamp() + 3600)
                 elif latest_valid_date.strftime("%H") in ["01", "07", "13", "19"]:
                     latest_valid_date = datetime.fromtimestamp(latest_valid_date.timestamp() - 3600)
@@ -252,7 +252,7 @@ class Ambient(object):
         self.__current["preci"] = last_preci + 1/360 * elapsed_minutes * (next_preci - last_preci)
         # This part of the code calculates current solar radiation
         last_solar = next_solar = 0.0
-        if "times" in self.__precipitation.keys():
+        if "times" in self.__solar_radiation.keys():
             for index, timestamp in enumerate(self.__solar_radiation["times"]):
                 if last_timestamp in timestamp:
                     last_solar = float(self.__solar_radiation["data"][index])
