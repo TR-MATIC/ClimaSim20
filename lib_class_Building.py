@@ -144,7 +144,6 @@ class BuildingEx(object):
         power = transfer_efficiency(temp_delta) * temp_delta * \
                 self.__config["air_spec_heat"] * self.__config["air_density"] * 1/3600 * op_data["flow_su"] + \
                 self.__params["window_SP"] * op_data["solar"]
-        print(self.__params["window_SP"] * op_data["solar"])
         return power
 
     def calculate_layer(self, layer_name: str, op_data: dict, power_source: float, temp_sink: float) -> dict:
@@ -164,7 +163,6 @@ class BuildingEx(object):
     def simulate_dioxide(self, op_data: dict) -> float:
         building_vol = self.__config["building_D"] * self.__config["building_L"] * self.__config["building_H"]
         number_of_people = int(5 + 100 * (op_data["preci"] / 50 + op_data["solar"] / 500 + op_data["dust"] / 50))
-        print(number_of_people)
         exhale_flow = number_of_people * 1200 * 0.0005
         exhale_co2 = 40000.0
         supply_co2 = 400.0
