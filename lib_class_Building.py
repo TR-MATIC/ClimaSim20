@@ -159,3 +159,15 @@ class BuildingEx(object):
                 "PB": power_balance,
                 "power_sink": power_sink,
                 "temperature": temp_layer}
+
+    def simulate_dioxide(self, op_data: dict) -> float:
+        building_vol = self.__config["building_D"] * self.__config["building_L"] * self.__config["building_H"]
+        number_of_people = int(5 + 100 * (op_data["preci"] / 100 - op_data["solar"] / 1000 + op_data["dust"] / 100))
+        print(number_of_people)
+        exhale_flow = number_of_people * 1200 * 0.005
+        exhale_co2 = 40000.0
+        supply_co2 = 400.0
+        carbon_dioxide = ((exhale_flow * exhale_co2 + op_data["flow_su"] * supply_co2) * op_data["ti_diff"] + \
+                         (building_vol - (exhale_flow + op_data["flow_su"]) * op_data["ti_diff"]) * op_data["air_q"]) / \
+                         building_vol
+        return carbon_dioxide

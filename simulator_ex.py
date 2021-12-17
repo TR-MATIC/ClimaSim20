@@ -132,6 +132,8 @@ while hrs < 168:
     op_data["ins_PB"] = insulation_conditions["PB"]
     op_data["temp_ins"] = insulation_conditions["temperature"]
 
+    op_data["air_q"] = building.simulate_dioxide(op_data)
+
     print("power_src= {:.6}, temp_rm= {:.4}, temp_wall= {:.4}, temp_ins= {:.4}".
           format(power_source, op_data["temp_rm"], op_data["temp_wall"], op_data["temp_ins"]))
 
