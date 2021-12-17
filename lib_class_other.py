@@ -13,6 +13,8 @@ class Handler(object):
         self.__script_started = time.time()
         self.__total_sec = 0
         self.__store_sec = 0
+        self.__curr_time = time.time()
+        self.__last_time = time.time()
 
     def timer(self, step=2):
         trig = False
@@ -24,6 +26,13 @@ class Handler(object):
         elapsed_sec = self.__total_sec % 3600
         elapsed_hrs = self.__total_sec // 3600
         return trig, elapsed_hrs, elapsed_sec
+
+    def ti_diff(self):
+        self.__curr_time = time.time()
+        ti_diff = (self.__curr_time - self.__last_time) / 3600
+        self.__last_time = self.__curr_time
+        return ti_diff
+
 
     def recover_op_data(self, op_data: dict):
         new_file = False

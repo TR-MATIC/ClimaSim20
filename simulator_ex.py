@@ -82,9 +82,7 @@ hrs = sec = 0
 
 building = BuildingEx()
 building.config = load_config(building.config_path)
-building_constants = building.initialize_params()
-for key in building_constants:
-    op_data[key] = building_constants[key]
+building.initialize_params()
 
 while hrs < 168:
     if (sec % 3600) == 0:
@@ -97,7 +95,9 @@ while hrs < 168:
         time.sleep(0.100)
         trig, hrs, sec = data_handler.timer(3)  # Timer triggers script execution in adjustable steps, 3s for example.
 
-    print("  Elapsed: {}hrs, {}sec, ".format(hrs, sec), end="")
+    op_data["ti_diff"] = data_handler.ti_diff()
+
+    print("  Elapsed: {}hrs, {}sec, ti_diff = {:1.4}".format(hrs, sec, op_data["ti_diff"] * 3600))
     outside_conditions = ambient.simulate()
     for key in ["temp", "preci", "solar", "dust"]:
         op_data[key] = outside_conditions[key]
@@ -132,8 +132,10 @@ while hrs < 168:
     op_data["ins_PB"] = insulation_conditions["PB"]
     op_data["temp_ins"] = insulation_conditions["temperature"]
 
+    print("power_src= {:.6}, temp_rm= {:.4}, temp_wall= {:.4}, temp_ins= {:.4}".
+          format(power_source, op_data["temp_rm"], op_data["temp_wall"], op_data["temp_ins"]))
+
     model_values = controls.calculate(op_data)
-    print(model_values)
     for key in model_values:
         op_data[key] = model_values[key]
 

@@ -103,14 +103,23 @@ class BuildingEx(object):
     def params(self, params: dict):
         self.__params = params
 
-    def initialize_params(self) -> dict:
-        # These are constant parameters which characterize the building
-        wall_area = 2 * (self.__config["building_D"] + self.__config["building_L"]) * self.__config["building_H"]
+    def initialize_params(self) -> bool:
+        # These are constant parameters which characterize the building.
+        # Wall area is calculated as sum of the flat roof (DxL) and all vertical walls (2xDxH+2xLxH).
+        # Assumption 1: no heat exchange through the bottom.
+        # Assumption 2: both roof and walls have the same structure - layer of concrete and insulation.
+        wall_area = self.__config["building_D"] * self.__config["building_L"] + \
+                    2 * (self.__config["building_D"] + self.__config["building_L"]) * self.__config["building_H"]
         wall_volume = wall_area * self.__config["concrete_thickness"]
         wall_mass = wall_volume * self.__config["concrete_density"]
+        # This conductance is not a material constant, but it's [W/K] for entire building.
         wall_conductance = wall_area * self.__config["concrete_lambda"] / self.__config["concrete_thickness"]
+        # This heatup energy is not a material constant, but it's [J/K] for entire building.
         wall_heatup_energy = wall_mass * self.__config["concrete_spec_heat"]
+        # Window area is a fraction of the walls.
         window_area = self.__config["glass_ratio"] * self.__config["building_L"] * self.__config["building_H"]
+        # Window specific power is parameter of entire glass surface.
+        # Note: windows are not calculated separately for heat insulation/dissipation.
         window_spec_power = window_area * self.__config["glass_capture"]
         air_volume = self.__config["building_D"] * self.__config["building_L"] * self.__config["building_H"]
         air_mass = air_volume * self.__config["air_density"]
@@ -120,10 +129,6 @@ class BuildingEx(object):
         insulation_mass = insulation_volume * self.__config["styrofoam_density"]
         insulation_conductance = wall_area * self.__config["styrofoam_lambda"] / self.__config["styrofoam_thickness"]
         insulation_heatup_energy = insulation_mass * self.__config["styrofoam_spec_heat"]
-        # These are initial values of process parameters of the building
-        air_accumulated_energy = self.__config["air_qacc"]
-        wall_accumulated_energy = self.__config["wall_qacc"]
-        insulation_accumulated_energy = self.__config["insulation_qacc"]
         # These are constants stored internally in the building object
         self.__params["wall_C"] = wall_conductance
         self.__params["wall_HE"] = wall_heatup_energy
@@ -132,10 +137,7 @@ class BuildingEx(object):
         self.__params["air_HE"] = air_heatup_energy
         self.__params["ins_C"] = insulation_conductance
         self.__params["ins_HE"] = insulation_heatup_energy
-        # These are initial values which are output to op_mode storage outside the building object
-        return {"wall_AQ": wall_accumulated_energy,
-                "air_AQ": air_accumulated_energy,
-                "ins_AQ": insulation_accumulated_energy}
+        return True
 
     def power_delivery(self, op_data: dict) -> float:
         temp_delta = op_data["temp_su"] - op_data["temp_rm"]
