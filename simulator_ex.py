@@ -97,7 +97,7 @@ while hrs < 168:
 
     op_data["ti_diff"] = data_handler.ti_diff()
 
-    print("  Elapsed: {}hrs, {}sec, ti_diff = {:1.4}".format(hrs, sec, op_data["ti_diff"] * 3600))
+    print("  Elapsed: {}hrs, {}sec, ti_diff: {:.4}, people: ".format(hrs, sec, op_data["ti_diff"] * 3600), end="")
     outside_conditions = ambient.simulate()
     for key in ["temp", "preci", "solar", "dust"]:
         op_data[key] = outside_conditions[key]
@@ -134,8 +134,8 @@ while hrs < 168:
 
     op_data["air_q"] = building.simulate_dioxide(op_data)
 
-    print("power_src= {:.6}, temp_rm= {:.4}, temp_wall= {:.4}, temp_ins= {:.4}".
-          format(power_source, op_data["temp_rm"], op_data["temp_wall"], op_data["temp_ins"]))
+    print("solar: {:.4}, power_src: {:.6}, temp_rm: {:.4}, temp_wall: {:.4}, temp_ins: {:.4}".
+          format(op_data["solar"], power_source, op_data["temp_rm"], op_data["temp_wall"], op_data["temp_ins"]))
 
     model_values = controls.calculate(op_data)
     for key in model_values:
