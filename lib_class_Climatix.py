@@ -135,11 +135,20 @@ class Climatix(object):
 
     # This function prepares the content of request to JSONGEN interface.
     def climatix_params_w(self, ao_dict: dict) -> dict:   # The input must be a dict with keys from __config dictionary.
+        # The ao_dict input dictionary has values of list type, a two-element list where element [0] is a value, which
+        # will be sent and the element [1] is a selector of send mode.
+        # Mode 0: set 0x3040 TrackingSelector = COM and write the value to 0x3043 TrackingValueCOM member
+        # Mode 1: write to 0x0100 PresentValue member
+        # Mode 2: write to 0x3049 OffsetCorrectionApl member
+        # Mode 0 is good for inputs, Mode 1 is good for setpoints and Mode 2 is a workaround for analog inputs which
+        # do not allow for changing the TrackingSelector (the case of hardcoded AirQuality input in StdAHU V4.10.010)
         climatix_params = {"fn": "write"}   # Uses WRITE function.
         params_list = []
         for key in ao_dict:
-            if ao_dict[key][1]:
+            if ao_dict[key][1] == 1:
                 params_list.append(self.__config[key] + self.__config["present_val"] + ";" + str(ao_dict[key][0]))
+            elif ao_dict[key][1] == 2:
+                params_list.append(self.__config[key] + self.__config["offset_corr_apl"] + ";" + str(ao_dict[key][0]))
             else:
                 params_list.append(self.__config[key] + self.__config["tracking_sel"] + ";" + "1")
                 params_list.append(self.__config[key] + self.__config["tracking_com_val"] + ";" + str(ao_dict[key][0]))

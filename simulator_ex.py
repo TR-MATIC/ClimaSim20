@@ -141,16 +141,16 @@ while hrs < 168:
     for key in model_values:
         op_data[key] = model_values[key]
 
-    controls.write_json({"temp": [op_data["temp"], False],
-                         "temp_su": [op_data["temp_su"], False],
-                         "temp_rm": [op_data["temp_rm"], False],
-                         "temp_ex": [op_data["temp_ex"], False],
-                         "temp_eh": [op_data["temp_eh"], False],
-                         "flow_su": [op_data["flow_su"], False],
-                         "flow_ex": [op_data["flow_ex"], False],
-                         "filt_su_pres": [op_data["filt_su_pres"], False],
-                         "filt_ex_pres": [op_data["filt_ex_pres"], False],
-                         "air_q": [op_data["air_q"], False]})
+    controls.write_json({"temp": [op_data["temp"], 0],
+                         "temp_su": [op_data["temp_su"], 0],
+                         "temp_rm": [op_data["temp_rm"], 0],
+                         "temp_ex": [op_data["temp_ex"], 0],
+                         "temp_eh": [op_data["temp_eh"], 0],
+                         "flow_su": [op_data["flow_su"], 0],
+                         "flow_ex": [op_data["flow_ex"], 0],
+                         "filt_su_pres": [op_data["filt_su_pres"], 0],
+                         "filt_ex_pres": [op_data["filt_ex_pres"], 0],
+                         "air_q": [op_data["air_q"], 2]})
 
     if (sec % 60) == 0:
         data_handler.store_op_data(op_data)
