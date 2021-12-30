@@ -175,7 +175,7 @@ class BuildingEx(object):
                 "temperature": temp_layer}
 
     def simulate_dioxide(self, op_data: dict) -> float:
-        if 7 <= int(time.strftime("%H")) <= 20:
+        if 7 <= int(time.strftime("%H")) <= 19:
             number_of_people = int(5 + 100 * (op_data["preci"] / 25 + op_data["solar"] / 250 + op_data["dust"] / 50))
         else:
             number_of_people = int(5 + 10 * (op_data["preci"] / 25 + op_data["solar"] / 250 + op_data["dust"] / 50))
