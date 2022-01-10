@@ -176,10 +176,21 @@ class BuildingEx(object):
 
     def simulate_dioxide(self, op_data: dict) -> float:
         if 7 <= int(time.strftime("%H")) <= 19:
-            number_of_people = int(5 + 100 * (op_data["preci"] / 25 + op_data["solar"] / 250 + op_data["dust"] / 50))
+            if op_data["air_q"] < 1000.0:
+                number_of_people = int(5 + 100 * (op_data["preci"] / 25 + op_data["solar"] / 250 + op_data["dust"] / 50))
+                number_of_people = limit(number_of_people, 50, 200)
+            elif op_data["air_q"] < 1250.0:
+                number_of_people = int(5 + 70 * (op_data["preci"] / 25 + op_data["solar"] / 250 + op_data["dust"] / 50))
+                number_of_people = limit(number_of_people, 35, 140)
+            elif op_data["air_q"] < 1500.0:
+                number_of_people = int(5 + 40 * (op_data["preci"] / 25 + op_data["solar"] / 250 + op_data["dust"] / 50))
+                number_of_people = limit(number_of_people, 20, 80)
+            else:
+                number_of_people = int(5 + 20 * (op_data["preci"] / 25 + op_data["solar"] / 250 + op_data["dust"] / 50))
+                number_of_people = limit(number_of_people, 10, 40)
         else:
             number_of_people = int(5 + 10 * (op_data["preci"] / 25 + op_data["solar"] / 250 + op_data["dust"] / 50))
-        number_of_people = limit(number_of_people, 5, 200)
+            number_of_people = limit(number_of_people, 5, 20)
         print(number_of_people)
         exhale_flow = number_of_people * 1200 * 0.0005
         exhale_co2 = 40000.0
