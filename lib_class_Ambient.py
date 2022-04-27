@@ -141,24 +141,26 @@ class Ambient(object):
 
     def get_forecast(self, field, level):
         output = {}
-        try:
-            response = requests.post(
-                self.data_point_url(field, level)["forecast"],
-                headers=self.__meteo_headers,
-                timeout=2.000)
-        except requests.Timeout:
-            status = {"error": "get_fcst_tout"}
-        except requests.ConnectionError:
-            status = {"error": "get_fcst_conn"}
-        except:
-            status = {"error": "get_fcst_othr"}
-        else:
-            if response.status_code == 200:
-                output = response.json()
-                status = {"error": "NONE"}
+        for retries in range(0,3):
+            try:
+                response = requests.post(
+                    self.data_point_url(field, level)["forecast"],
+                    headers=self.__meteo_headers,
+                    timeout=1.000)
+            except requests.Timeout:
+                status = {"error": "get_fcst_tout"}
+            except requests.ConnectionError:
+                status = {"error": "get_fcst_conn"}
+            except:
+                status = {"error": "get_fcst_othr"}
             else:
-                status = {"error": "get_fcst_" + str(response.status_code)}
-        print("{} ; {}".format(status, output))
+                if response.status_code == 200:
+                    output = response.json()
+                    status = {"error": "NONE"}
+                    break
+                else:
+                    status = {"error": "get_fcst_" + str(response.status_code)}
+        print("{} ; {} ; {}".format(retries, status, output))
         return output, status
 
     def renew_forecast(self):
